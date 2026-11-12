@@ -248,6 +248,36 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
 .opts button:disabled:not(.right):not(.wrongpick){opacity:.55}
 .why{margin-top:6px;font-size:.88rem;color:var(--muted);border-right:3px solid var(--accent);padding-right:.6rem}
 
+/* path */
+.pathtop{margin-bottom:14px}
+.pathtop .row{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+.pathtop .big{font-size:1.15rem;font-weight:700}
+.pathtop .nextbox{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;padding:.7rem .9rem;border-radius:10px;background:var(--accent-soft);border:1px solid var(--accent)}
+.pathtop .nextbox .what{flex:1;min-width:200px}
+.pathtop .nextbox .what b{display:block}
+.pathbar{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden;direction:ltr;margin-top:10px}
+.pathbar i{display:block;height:100%;background:var(--accent)}
+.pathbar i.done{background:var(--ok)}
+.milestones{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.milestone{font-size:.8rem;border-radius:999px;padding:.15rem .7rem;border:1px solid var(--line);color:var(--muted)}
+.milestone.on{border-color:var(--ok);color:var(--ok);background:var(--ok-soft);font-weight:700}
+.stages{display:flex;flex-direction:column;gap:10px}
+.stage{display:grid;grid-template-columns:auto 1fr auto;gap:10px 14px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.stage.current{border-color:var(--accent);box-shadow:var(--shadow)}
+.stage.done{opacity:.8}
+.stage .num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-variant-numeric:tabular-nums;background:var(--surface-2);color:var(--muted);font-size:.9rem}
+.stage.done .num{background:var(--ok);color:#fff}
+.stage.current .num{background:var(--accent);color:var(--accent-ink)}
+.stage h3{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}
+.stage h3 .pg{font-weight:500;color:var(--muted);font-size:.8rem}
+.checks{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:3px;font-size:.9rem}
+.checks li{display:flex;gap:8px;align-items:center}
+.checks li .box{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--line);display:grid;place-items:center;font-size:.7rem;flex:0 0 auto}
+.checks li.ok .box{background:var(--ok);border-color:var(--ok);color:#fff}
+.checks li.ok{color:var(--muted)}
+.checks li .cnt{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.82rem}
+.stage .act{align-self:center}
+@media (max-width:820px){ .stage{grid-template-columns:auto 1fr} .stage .act{grid-column:1 / -1;justify-self:start} }
 .banner{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:.6rem 1.1rem;border-radius:10px;font-weight:600;box-shadow:var(--shadow);z-index:40;opacity:0;pointer-events:none;transition:opacity .25s;max-width:calc(100vw - 32px);text-align:center}
 .banner.show{opacity:1}
 .confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;padding:.5rem .8rem;margin-top:8px}
@@ -303,12 +333,19 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
   <div class="progress" id="progress"></div>
 
   <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="path">מסלול</button>
     <button role="tab" data-tab="practice" aria-selected="true">תרגול</button>
     <button role="tab" data-tab="theory">תיאוריה</button>
     <button role="tab" data-tab="session">סשן</button>
     <button role="tab" data-tab="journal">יומן</button>
     <button role="tab" data-tab="sandbox">חופשי</button>
   </nav>
+
+  <!-- PATH -->
+  <section class="panel" id="panel-path" hidden>
+    <div class="card pathtop" id="pathTop"></div>
+    <div class="stages" id="pathStages"></div>
+  </section>
 
   <!-- PRACTICE -->
   <section class="panel practice" id="panel-practice">
@@ -1225,8 +1262,71 @@ function translateError(msg){
     const solved=EXERCISES.filter(e=>prog(e.id).solved).length;
     const qAll=THEORY.reduce((a,t)=>a+t.quiz.length,0), qOk=Object.values(state.quiz||{}).filter(q=>q.correct).length;
     const themeLabel={system:'ערכת נושא: מערכת',light:'ערכת נושא: בהיר',dark:'ערכת נושא: כהה'}[state.theme||'system'];
-    $('#headstats').innerHTML=`<div class="hstat"><span class="n">${solved}/${EXERCISES.length}</span><span class="l">תרגילים</span></div><div class="hstat"><span class="n">${qOk}/${qAll}</span><span class="l">שאלות ידע</span></div><div class="hstat"><span class="n">${streak()}</span><span class="l">ימי רצף</span></div><button class="themeBtn ghost" type="button" id="themeBtn">${themeLabel}</button>`;
+    const nx=nextItem();
+    $('#headstats').innerHTML=`<div class="hstat"><span class="n">${solved}/${EXERCISES.length}</span><span class="l">תרגילים</span></div><div class="hstat"><span class="n">${qOk}/${qAll}</span><span class="l">שאלות ידע</span></div><div class="hstat"><span class="n">${streak()}</span><span class="l">ימי רצף</span></div><button class="primary themeBtn" type="button" id="nextBtnHead" ${nx?'':'disabled'}>${nx?'המשך במסלול: '+esc(nx.short):'המסלול הושלם'}</button><button class="themeBtn ghost" type="button" id="themeBtn">${themeLabel}</button>`;
     $('#themeBtn').onclick=cycleTheme;
+    $('#nextBtnHead').onclick=()=>{ if (nx) goNext(nx); };
+  }
+
+  // learning path: stages in syllabus order, three checks each, nothing locked
+  const STAGE_CARDS={A:['A'],B:['B'],C:['C'],D:['D'],E:['E'],F:['F'],G:['G'],H:['X'],I:['I','W']};
+  const STAGE_NOTE={H:'לפני הדוחות המשולבים: כרטיס ההשלמה (סדר ביצוע, NULL, ONLY_FULL_GROUP_BY). זה מה שההרצאה לא מכסה ונדרש במבחן.', I:'מעבר לסילבוס. מה ששואלים בראיונות לאנליסט.'};
+  function cardOf(k){ return THEORY.find(c=>c.topic===k); }
+  function stageStatus(key){
+    const cards=STAGE_CARDS[key]||[]; const read=state.read||{};
+    const readOk=cards.every(k=>read[k]);
+    let qOk=0, qAll=0; for (const k of cards){ const c=cardOf(k); qAll+=c.quiz.length; qOk+=c.quiz.filter((q,i)=>(state.quiz[k+i]||{}).correct).length; }
+    const exs=EXERCISES.filter(e=>e.topic===key); const exDone=exs.filter(e=>prog(e.id).solved).length;
+    const done = readOk && qOk===qAll && exDone===exs.length;
+    const started = cards.some(k=>read[k]) || qOk>0 || exDone>0;
+    return {cards, readOk, qOk, qAll, exDone, exTotal:exs.length, done, started};
+  }
+  function stageNext(key){
+    const st=stageStatus(key); const read=state.read||{};
+    for (const k of st.cards) if (!read[k]) return {type:'card', card:k, stage:key, short:'כרטיס '+topic(key).name, label:'לקרוא את הכרטיס "'+cardOf(k).title+'"'};
+    for (const k of st.cards){ const c=cardOf(k); if (c.quiz.some((q,i)=>!(state.quiz[k+i]||{}).correct)) return {type:'quiz', card:k, stage:key, short:'שאלות ידע '+topic(key).name, label:'לענות נכון על שלוש שאלות הידע ב-"'+c.title+'"'}; }
+    const e=EXERCISES.find(x=>x.topic===key && !prog(x.id).solved);
+    if (e) return {type:'exercise', id:e.id, stage:key, short:'תרגיל '+e.id, label:'תרגיל '+e.id+': '+e.q};
+    return null;
+  }
+  function nextItem(){ for (const t of TOPICS){ const n=stageNext(t.key); if (n) return n; } return null; }
+  function goNext(n){
+    if (!n) return;
+    if (n.type==='exercise'){ filter=n.stage; renderList(); showTab('practice'); openExercise(n.id); return; }
+    showTab('theory');
+    const det=document.querySelector(`details[data-topic="${n.card}"]`);
+    if (det){ det.open=true; const target = n.type==='quiz' ? det.querySelector('.quiz') : det; setTimeout(()=>target.scrollIntoView({block:'start', behavior:'smooth'}), 50); }
+  }
+  function renderPath(){
+    const top=$('#pathTop'), list=$('#pathStages'); if (!top) return;
+    const statuses=TOPICS.map(t=>({t, s:stageStatus(t.key)}));
+    const doneCount=statuses.filter(x=>x.s.done).length;
+    const units=statuses.reduce((a,x)=>a+x.s.exTotal+x.s.qAll+x.s.cards.length,0);
+    const doneUnits=statuses.reduce((a,x)=>a+x.s.exDone+x.s.qOk+x.s.cards.filter(k=>(state.read||{})[k]).length,0);
+    const pct=Math.round(doneUnits/units*100);
+    const nx=nextItem();
+    const syllabusDone=statuses.filter(x=>x.t.key!=='I').every(x=>x.s.done);
+    const interviewDone=statuses.every(x=>x.s.done);
+    const cur = nx ? nx.stage : null;
+    top.innerHTML=`<div class="row"><div><div class="eyebrow">המסלול שלך</div><div class="big">${doneCount}/${TOPICS.length} שלבים הושלמו · ${pct}% מהפריטים</div></div></div>
+      <div class="pathbar"><i class="${pct===100?'done':''}" style="width:${pct}%"></i></div>
+      <div class="milestones"><span class="milestone ${syllabusDone?'on':''}">${syllabusDone?'✓ ':''}מוכן למבחן הקורס (שלבים 1–8)</span><span class="milestone ${interviewDone?'on':''}">${interviewDone?'✓ ':''}רמת ראיון אנליסט (שלב 9)</span></div>
+      ${nx?`<div class="nextbox"><div class="what"><span class="eyebrow">הבא בתור · שלב ${TOPICS.findIndex(t=>t.key===nx.stage)+1}, ${esc(topic(nx.stage).name)}</span><b>${esc(nx.label)}</b></div><button class="primary" type="button" id="pathGo">המשך מאיפה שעצרת</button></div>`:`<div class="nextbox"><div class="what"><b>סיימת את כל המסלול.</b> מכאן: מצב מבחן, שליפה יומית על חזרות, ותרגול חופשי.</div></div>`}
+      <p class="muted tiny" style="margin-top:10px">סדר השלבים הוא סדר ההרצאות. כל שלב נסגר כשקראת את הכרטיס, ענית נכון על כל שאלות הידע ופתרת את כל התרגילים. שום דבר לא נעול: אפשר לקפוץ לכל מקום, המסלול רק מראה מה הבא.</p>`;
+    const go=$('#pathGo'); if (go) go.onclick=()=>goNext(nx);
+    list.innerHTML='';
+    statuses.forEach(({t,s},i)=>{
+      const d=document.createElement('div'); d.className='stage'+(s.done?' done':'')+(t.key===cur?' current':'');
+      const read=state.read||{};
+      const checks=[];
+      if (s.cards.length) checks.push(`<li class="${s.readOk?'ok':''}"><span class="box">${s.readOk?'✓':''}</span><span>${s.cards.length>1?'קראת את הכרטיסים':'קראת את הכרטיס'}</span><span class="cnt">${s.cards.filter(k=>read[k]).length}/${s.cards.length}</span></li>`);
+      if (s.qAll) checks.push(`<li class="${s.qOk===s.qAll?'ok':''}"><span class="box">${s.qOk===s.qAll?'✓':''}</span><span>שאלות ידע</span><span class="cnt">${s.qOk}/${s.qAll}</span></li>`);
+      checks.push(`<li class="${s.exDone===s.exTotal?'ok':''}"><span class="box">${s.exDone===s.exTotal?'✓':''}</span><span>תרגילים</span><span class="cnt">${s.exDone}/${s.exTotal}</span></li>`);
+      const n=stageNext(t.key);
+      d.innerHTML=`<div class="num">${s.done?'✓':i+1}</div><div><h3><span>${esc(t.full)}</span><span class="pg">${esc(t.pages)}</span></h3>${STAGE_NOTE[t.key]?`<p class="muted tiny" style="margin-top:4px">${esc(STAGE_NOTE[t.key])}</p>`:''}<ul class="checks">${checks.join('')}</ul></div><div class="act">${n?`<button class="small ${t.key===cur?'primary':''}" type="button">${s.started?'המשך':'התחל'}</button>`:`<span class="badge" style="color:var(--ok)">הושלם</span>`}</div>`;
+      const b=d.querySelector('.act button'); if (b) b.onclick=()=>goNext(n);
+      list.appendChild(d);
+    });
   }
 
   // tabs
@@ -1236,6 +1336,7 @@ function translateError(msg){
     if (name==='journal') renderJournal();
     if (name==='session') renderSessions();
     if (name==='practice') renderProgress();
+    if (name==='path') renderPath();
     $('#rail').classList.remove('open');
     try { history.replaceState(null,'','#'+name); } catch(e){}
     window.scrollTo({top:0});
@@ -1451,6 +1552,7 @@ function translateError(msg){
         try { const r=runQuery(db,x.sql); out.innerHTML='<div class="tablewrap"></div>'; renderTable(out.firstChild, r, 50); }
         catch(err){ out.innerHTML=`<div class="feedback bad"><span class="icon">×</span><div>${esc(translateError(err.message||err))}</div></div>`; }
       });
+      d.addEventListener('toggle', ()=>{ if (d.open){ state.read=state.read||{}; if (!state.read[c.topic]){ state.read[c.topic]=true; save(); renderHead(); } } });
       th.appendChild(d);
       renderQuiz(c, d.querySelector(`#quiz-${c.topic}`));
     }
@@ -1472,6 +1574,7 @@ function translateError(msg){
         state.quiz[key]={answered:true, pick, correct, ts:Date.now()}; save();
         if (!correct) log({kind:'quiz', ex:'Q'+key, topic:card.topic, msg:q.q, sql:''}); else log({kind:'solved', ex:'Q'+key, topic:card.topic, attempts:1, hints:0, quiz:true});
         renderQuiz(card, el); renderHead();
+        if (card.quiz.every((qq,j)=>(state.quiz[card.topic+j]||{}).correct)) banner('הכרטיס הושלם: 3/3');
         const sum=el.closest('details').querySelector('.qs'); const ok=card.quiz.filter((qq,j)=>(state.quiz[card.topic+j]||{}).correct).length; sum.textContent=`${ok}/${card.quiz.length}`; sum.classList.toggle('full', ok===card.quiz.length);
       });
       el.appendChild(d);
@@ -1708,7 +1811,7 @@ function translateError(msg){
   renderSchema(); renderFilters(); renderList(); renderProgress(); renderSessions();
   openExercise(current);
   const startTab = (location.hash||'').replace('#','');
-  if (['practice','session','journal','theory','sandbox'].includes(startTab)) showTab(startTab);
+  showTab(['path','practice','session','journal','theory','sandbox'].includes(startTab) ? startTab : 'path');
   $('#run').disabled=true; $('#sbRun').disabled=true;
   function engineReady(){ $('#run').disabled=false; $('#sbRun').disabled=false; }
   function engineFail(err){
