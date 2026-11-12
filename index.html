@@ -42,6 +42,7 @@
   color-scheme:dark }
 
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-ui);font-size:15px;line-height:1.55;direction:rtl;padding-top:env(safe-area-inset-top,0px)}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
@@ -133,6 +134,11 @@ textarea.sql::selection{background:color-mix(in srgb, var(--accent) 30%, transpa
 .exam{display:flex;gap:8px 14px;align-items:center;flex-wrap:wrap;background:var(--warn-soft);border:1px solid var(--warn);border-radius:10px;padding:.55rem .9rem}
 .exam .spacer{flex:1}
 .exam b{font-variant-numeric:tabular-nums}
+.anatomy{margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface-2)}
+.anatomy ol{margin:6px 0 0;padding-right:1.3rem;display:flex;flex-direction:column;gap:6px}
+.anatomy li{font-size:.92rem}
+.anatomy li .cl{font-family:var(--font-mono);font-size:.8rem;direction:ltr;unicode-bidi:isolate;display:inline-block;background:var(--code-bg);border:1px solid var(--line);border-radius:5px;padding:0 .4rem;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.anatomy li .ex{color:var(--muted);font-size:.84rem}
 .examlist{display:flex;flex-direction:column;gap:6px;margin-top:10px}
 .examlist div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px dashed var(--line);padding:.3rem 0;font-size:.9rem}
 .examlist .score{font-weight:700;font-variant-numeric:tabular-nums}
@@ -257,9 +263,18 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
   .rail .railhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
   #railToggle{display:inline-flex}
   .edwrap pre.hl, textarea.sql{font-size:16px;min-height:130px}
+  textarea.sql{-webkit-appearance:none;appearance:none;border-radius:0}
   button{min-height:44px}
-  .chip, .tabs button{min-height:0}
+  .tabs button{min-height:0}
+  .chip{min-height:36px;padding:.25rem .7rem .25rem .4rem;font-size:.85rem}
   .tokbar button{min-height:40px}
+  .eyebrow,.hstat .l,.entry .kind,details.theory summary .qs,.badge{font-size:.78rem}
+  .top .sub{display:none}
+  .progress{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .progress::-webkit-scrollbar{display:none}
+  .progress .chip{flex:0 0 auto}
+  body:has(.rail.open){overflow:hidden}
+  .erd .col{font-size:12px}.erd .pk{font-size:12px}.erd .lbl{font-size:11px}
   .toolbar.sticky{position:sticky;bottom:calc(6px + env(safe-area-inset-bottom,0px));background:var(--surface);padding:8px 0 2px;z-index:5}
   .toolbar .kbd{display:none}
   .clock{font-size:2rem}
@@ -318,10 +333,12 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
           <button id="hintBtn">רמז</button>
           <button id="solBtn" class="ghost" title="נפתח אחרי שלושה ניסיונות">פתרון</button>
           <button id="clearBtn" class="ghost">נקה</button>
+          <button id="anatBtn" class="ghost" title="מציג את השאילתה שלך לפי סדר הביצוע הלוגי">סדר ביצוע</button>
           <span class="spacer"></span>
           <button id="prevBtn" class="ghost small">הקודם</button>
           <button id="nextBtn" class="ghost small">הבא</button>
         </div>
+        <div class="anatomy" id="anatomy" hidden></div>
         <div class="hints" id="hints"></div>
         <div class="solution" id="solution" hidden></div>
       </div>
@@ -491,7 +508,8 @@ const TOPICS = [
   {key:'E', name:'UNION', full:'איחוד תוצאות', pages:'עמ׳ 53–54'},
   {key:'F', name:'JOIN', full:'JOIN, LEFT JOIN ו-NULL', pages:'עמ׳ 70–72'},
   {key:'G', name:'IN', full:'IN ותת-שאילתות', pages:'עמ׳ 93'},
-  {key:'H', name:'דוח משולב', full:'שאלות ראיון: כמה נושאים בשאילתה אחת', pages:'מעבר להרצאה'}
+  {key:'H', name:'דוח משולב', full:'שאלות ראיון: כמה נושאים בשאילתה אחת', pages:'מעבר להרצאה'},
+  {key:'I', name:'ראיון אנליסט', full:'תת-שאילתות, CTE, EXISTS ופונקציות חלון', pages:'מעבר לסילבוס'}
 ];
 
 const EXERCISES = [
@@ -643,7 +661,54 @@ const EXERCISES = [
    hints:['קיבוץ לפי חודש, מיון לפי הסכום בסדר יורד, LIMIT 1.']},
   {id:'H4', topic:'H', level:3, ordered:true, q:'SLA החזרות: לכל ספק עם לפחות 2 החזרות סגורות, שם הספק, מספר ההחזרות הסגורות וממוצע הימים לסגירה. מהמהיר לאיטי.',
    sql:"SELECT s.supplier_name, COUNT(*) AS closed, AVG(r.days_to_close) AS avg_days FROM returns r JOIN orders o ON r.order_id = o.order_id JOIN suppliers s ON o.supplier_id = s.supplier_id WHERE r.status = 'סופית' GROUP BY s.supplier_id, s.supplier_name HAVING COUNT(*) >= 2 ORDER BY avg_days",
-   hints:['שלוש טבלאות, WHERE על סטטוס ההחזרה, GROUP BY ספק, HAVING על הספירה, ORDER BY על הממוצע.','זה כל הסילבוס בשאילתה אחת. אם היא יוצאת לך נקי, אתה מוכן לשאלת ה-SQL בראיון.']}
+   hints:['שלוש טבלאות, WHERE על סטטוס ההחזרה, GROUP BY ספק, HAVING על הספירה, ORDER BY על הממוצע.','זה כל הסילבוס בשאילתה אחת. אם היא יוצאת לך נקי, אתה מוכן לשאלת ה-SQL בראיון.']},
+
+  // I — analyst interview level: subqueries, CTE, EXISTS, window functions
+  {id:'I1', topic:'I', level:2, q:'ממוצע מספר ההזמנות לספק: ספור הזמנות לכל ספק בתת-שאילתה בתוך FROM, ואז חשב AVG על התוצאה. עמודה אחת.',
+   sql:"SELECT AVG(cnt) AS avg_orders_per_supplier FROM (SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id) AS t",
+   hints:['FROM (SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id) AS t, ואז AVG(cnt).','ב-MySQL טבלה נגזרת חייבת כינוי (AS t). SQLite סלחן, המאמן יזהיר.'],
+   note:'טבלה נגזרת (derived table): תוצאה של שאילתה שמשמשת כטבלה. אגרגציה על אגרגציה היא שאלת ראיון קלאסית.'},
+  {id:'I2', topic:'I', level:3, q:'עם WITH: מזהי הספקים שמספר ההזמנות שלהם גבוה מהממוצע לספק, עם מספר ההזמנות.',
+   sql:"WITH c AS (SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id) SELECT supplier_id, cnt FROM c WHERE cnt > (SELECT AVG(cnt) FROM c)",
+   hints:['WITH c AS (...) מגדיר טבלה זמנית שאפשר להשתמש בה פעמיים: פעם לשורות ופעם לממוצע.','תת-שאילתה שמחזירה ערך אחד (סקלרית) יכולה לעמוד מימין ל->.']},
+  {id:'I3', topic:'I', level:2, q:'הזמנות שסכומן גבוה מהממוצע הכללי של כל ההזמנות: מספר הזמנה וסכום.',
+   sql:"SELECT order_id, amount FROM orders WHERE amount > (SELECT AVG(amount) FROM orders)",
+   hints:['WHERE amount > (SELECT AVG(amount) FROM orders).','אי אפשר לכתוב WHERE amount > AVG(amount). הממוצע חייב להגיע מתת-שאילתה.']},
+  {id:'I4', topic:'I', level:3, q:'לכל ספק, ההזמנה (או ההזמנות) עם הסכום הגבוה ביותר שלו: מספר הזמנה, מזהה ספק, סכום. השתמש בתת-שאילתה מתואמת (correlated).',
+   sql:"SELECT o.order_id, o.supplier_id, o.amount FROM orders o WHERE o.amount = (SELECT MAX(o2.amount) FROM orders o2 WHERE o2.supplier_id = o.supplier_id)",
+   hints:['תת-שאילתה מתואמת מתייחסת לשורה החיצונית: WHERE o2.supplier_id = o.supplier_id.','לספק אחד יש שתי הזמנות באותו סכום מקסימלי. שתיהן צריכות להופיע.']},
+  {id:'I5', topic:'I', level:3, q:'שמות הספקים שיש להם לפחות החזרה אחת פתוחה ("ממתין לחבילה"). השתמש ב-EXISTS.',
+   sql:"SELECT s.supplier_name FROM suppliers s WHERE EXISTS (SELECT 1 FROM orders o JOIN returns r ON r.order_id = o.order_id WHERE o.supplier_id = s.supplier_id AND r.status = 'ממתין לחבילה')",
+   hints:['EXISTS (SELECT 1 FROM ... WHERE ... = s.supplier_id AND ...). מה שב-SELECT בפנים לא משנה.','EXISTS עוצר בהתאמה הראשונה ולא מכפיל שורות. זה היתרון שלו על JOIN כאן.']},
+  {id:'I6', topic:'I', level:2, q:'שמות המוצרים שמעולם לא הוזמנו, הפעם עם NOT EXISTS.',
+   sql:"SELECT p.product_name FROM products p WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.product_id)",
+   hints:['NOT EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.product_id).','בניגוד ל-NOT IN, NOT EXISTS לא נשבר מ-NULL. בראיון תדע להסביר למה.']},
+  {id:'I7', topic:'I', level:3, q:'לכל ספק, ההזמנה האחרונה שלו לפי תאריך: מזהה ספק, מספר הזמנה, תאריך. השתמש ב-ROW_NUMBER.',
+   sql:"SELECT supplier_id, order_id, order_date FROM (SELECT supplier_id, order_id, order_date, ROW_NUMBER() OVER (PARTITION BY supplier_id ORDER BY order_date DESC) AS rn FROM orders) AS t WHERE rn = 1",
+   hints:['ROW_NUMBER() OVER (PARTITION BY supplier_id ORDER BY order_date DESC) AS rn בתת-שאילתה, ואז WHERE rn = 1 בחוץ.','אי אפשר לסנן על פונקציית חלון ב-WHERE של אותה שאילתה. לכן תת-שאילתה או CTE.'],
+   note:'"הראשון בכל קבוצה" (top-N per group) היא שאלת הראיון הנפוצה ביותר על פונקציות חלון.'},
+  {id:'I8', topic:'I', level:3, ordered:true, q:'סכום מצטבר של ההזמנות שסופקו לפי תאריך: תאריך, סכום, סכום מצטבר. ממוין לפי תאריך.',
+   sql:"SELECT order_date, amount, SUM(amount) OVER (ORDER BY order_date) AS running_total FROM orders WHERE status = 'סופקה' ORDER BY order_date",
+   hints:['SUM(amount) OVER (ORDER BY order_date) נותן סכום רץ בלי GROUP BY, השורות נשארות.','ה-WHERE מסנן לפני שהחלון מחושב, אז המצטבר כולל רק הזמנות שסופקו.']},
+  {id:'I9', topic:'I', level:3, ordered:true, q:'סכום ההזמנות שסופקו בכל חודש (YYYY-MM), והשינוי מהחודש הקודם עם LAG: חודש, סכום, שינוי. ממוין לפי חודש. בחודש הראשון השינוי ריק.',
+   sql:"WITH m AS (SELECT SUBSTR(order_date,1,7) AS month, SUM(amount) AS total FROM orders WHERE status = 'סופקה' GROUP BY SUBSTR(order_date,1,7)) SELECT month, total, total - LAG(total) OVER (ORDER BY month) AS change FROM m ORDER BY month",
+   hints:['קודם CTE שמקבץ לחודש, ואז LAG(total) OVER (ORDER BY month) על התוצאה.','LAG של השורה הראשונה הוא NULL, ולכן גם ההפרש NULL. זה נכון, לא באג.'],
+   note:'השוואה לתקופה קודמת (month over month) היא לחם וחמאה של אנליסט.'},
+  {id:'I10', topic:'I', level:3, ordered:true, q:'דרג את המוצרים לפי מספר ההזמנות שלהם מהגבוה לנמוך עם DENSE_RANK: מזהה מוצר, מספר הזמנות, דירוג. ממוין לפי דירוג ואז מזהה מוצר.',
+   sql:"SELECT product_id, COUNT(*) AS cnt, DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS rnk FROM orders GROUP BY product_id ORDER BY rnk, product_id",
+   hints:['אפשר לשלב GROUP BY ופונקציית חלון: החלון מחושב על התוצאה המקובצת, DENSE_RANK() OVER (ORDER BY COUNT(*) DESC).','יש תיקו בין מוצרים. DENSE_RANK נותן 1, 2, 3 בלי דילוגים; RANK היה נותן 1, 2, 2, 4.']},
+  {id:'I11', topic:'I', level:3, q:'חלקו של כל ספק מסך ההזמנות שסופקו, באחוזים מעוגלים לשתי ספרות אחרי הנקודה: מזהה ספק, סכום, אחוז.',
+   sql:"SELECT supplier_id, SUM(amount) AS total, ROUND(100.0 * SUM(amount) / (SELECT SUM(amount) FROM orders WHERE status = 'סופקה'), 2) AS pct FROM orders WHERE status = 'סופקה' GROUP BY supplier_id",
+   hints:['המכנה הוא תת-שאילתה סקלרית, או SUM(SUM(amount)) OVER () אם אתה כבר בפונקציות חלון.','100 * מספר שלם חלקי מספר שלם הוא חילוק שלמים ב-SQLite וב-MySQL ישן. כתוב 100.0.']},
+  {id:'I12', topic:'I', level:2, q:'בקרת איכות: צירופים של ספק, מוצר ומצב ציוד שהוזמנו יותר מפעם אחת: מזהה ספק, מזהה מוצר, מצב, מספר הפעמים.',
+   sql:"SELECT supplier_id, product_id, condition, COUNT(*) AS times FROM orders GROUP BY supplier_id, product_id, condition HAVING COUNT(*) > 1",
+   hints:['GROUP BY על שלוש העמודות יחד, ואז HAVING COUNT(*) > 1.','זיהוי כפילויות לפי מפתח מורכב. בדוח ספקים אמיתי זה השלב שלפני הסרת הכפילויות.']},
+  {id:'I13', topic:'I', level:2, q:'חלק את ההזמנות שסופקו לשלוש קבוצות מחיר: "נמוך" עד 2000 כולל, "בינוני" עד 7000 כולל, "גבוה" מעל. ספור כמה הזמנות בכל קבוצה: קבוצה וכמות.',
+   sql:"SELECT CASE WHEN amount <= 2000 THEN 'נמוך' WHEN amount <= 7000 THEN 'בינוני' ELSE 'גבוה' END AS price_band, COUNT(*) AS cnt FROM orders WHERE status = 'סופקה' GROUP BY price_band",
+   hints:['CASE WHEN amount <= 2000 THEN ... WHEN amount <= 7000 THEN ... ELSE ... END AS price_band.','GROUP BY לפי הכינוי (price_band) עובד ב-MySQL וב-SQLite. ב-SQL Server לא, שם חוזרים על ה-CASE.']},
+  {id:'I14', topic:'I', level:2, q:'לכל החזרה סגורה ("סופית"): מספר ההזמנה ומספר הימים שעברו מתאריך ההזמנה עד תאריך ההחזרה. ב-SQLite: julianday(b) - julianday(a). ב-MySQL זה DATEDIFF(b, a).',
+   sql:"SELECT r.order_id, CAST(julianday(r.return_date) - julianday(o.order_date) AS INTEGER) AS days_out FROM returns r JOIN orders o ON r.order_id = o.order_id WHERE r.status = 'סופית'",
+   hints:['JOIN בין returns ל-orders, ואז הפרש תאריכים.','julianday מחזיר מספר עשרוני. CAST ל-INTEGER או בלי, שניהם יתקבלו כאן.']}
 ];
 
 const THEORY = [
@@ -787,6 +852,65 @@ WHERE col IN (SELECT col FROM other WHERE ...);</pre>
      {q:'תת-שאילתה בתוך IN חייבת להחזיר:', a:'עמודה אחת', o:['שורה אחת','שתי עמודות','טבלה שלמה'], why:'IN משווה ערך לרשימת ערכים. שורות יכולות להיות רבות, עמודה אחת.'},
      {q:'יתרון של IN על JOIN כשרק מסננים:', a:'IN לא מכפיל שורות', o:['IN תמיד מהיר יותר','IN מאפשר להציג עמודות משתי הטבלאות','IN תומך ב-GROUP BY ו-JOIN לא'], why:'JOIN ליחס 1:N מכפיל, ואז צריך DISTINCT. IN רק בודק שייכות.'}
    ]},
+  {topic:'I', title:'תת-שאילתות, CTE ו-EXISTS', pages:'ראיון', html:`
+<pre>-- סקלרית: ערך אחד
+WHERE amount > (SELECT AVG(amount) FROM orders)
+
+-- רשימה
+WHERE product_id IN (SELECT product_id FROM products WHERE ...)
+
+-- טבלה נגזרת (חובה כינוי ב-MySQL)
+FROM (SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id) AS t
+
+-- CTE: אותו דבר, קריא יותר, אפשר להשתמש פעמיים
+WITH c AS (SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id)
+SELECT ... FROM c WHERE cnt > (SELECT AVG(cnt) FROM c);
+
+-- מתואמת: מתייחסת לשורה החיצונית, רצה לכל שורה
+WHERE o.amount = (SELECT MAX(amount) FROM orders o2 WHERE o2.supplier_id = o.supplier_id)
+
+-- קיום
+WHERE EXISTS (SELECT 1 FROM returns r WHERE r.order_id = o.order_id)</pre>
+<ul>
+<li>ארבעה מקומות לתת-שאילתה: WHERE (סקלרית או IN), FROM (טבלה נגזרת), SELECT (סקלרית לכל שורה), ו-WITH.</li>
+<li><b>אגרגציה על אגרגציה</b> (ממוצע של ספירות) תמיד דורשת שתי רמות: קודם GROUP BY בפנים, ואז אגרגציה בחוץ.</li>
+<li>EXISTS מול IN: EXISTS עוצר בהתאמה הראשונה, לא מכפיל שורות, ו-NOT EXISTS לא נשבר מ-NULL. IN קריא יותר לרשימות קצרות.</li>
+<li>תת-שאילתה מתואמת היא איטית על טבלאות גדולות (רצה פעם לכל שורה). בראיון: להציע גם גרסה עם JOIN או חלון.</li>
+</ul>`,
+   examples:[
+     {label:'ממוצע של ספירות: שתי רמות אגרגציה', sql:"SELECT AVG(cnt) AS avg_orders_per_supplier, MIN(cnt) AS min_cnt, MAX(cnt) AS max_cnt FROM (SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id) AS t"},
+     {label:'EXISTS מול JOIN: JOIN מכפיל, EXISTS לא', sql:"SELECT 'JOIN' AS method, COUNT(*) AS rows_count FROM suppliers s JOIN orders o ON o.supplier_id = s.supplier_id JOIN returns r ON r.order_id = o.order_id UNION ALL SELECT 'EXISTS', COUNT(*) FROM suppliers s WHERE EXISTS (SELECT 1 FROM orders o JOIN returns r ON r.order_id = o.order_id WHERE o.supplier_id = s.supplier_id)"}
+   ],
+   quiz:[
+     {q:'"ממוצע מספר ההזמנות לספק". למה AVG(COUNT(*)) לא עובד?', a:'אי אפשר לקנן אגרגציה באגרגציה; צריך לספור בתת-שאילתה ולמצע בחוץ', o:['כי AVG עובד רק על עמודות מספריות','כי צריך DISTINCT','זה כן עובד ב-MySQL'], why:'אגרגציה על אגרגציה = שתי רמות: GROUP BY בפנים, AVG בחוץ (טבלה נגזרת או CTE).'},
+     {q:'מה ההבדל המעשי בין NOT IN ל-NOT EXISTS?', a:'NOT EXISTS לא נשבר כשיש NULL בתת-השאילתה, NOT IN מחזיר ריק', o:['אין הבדל','NOT IN מהיר יותר תמיד','NOT EXISTS לא מקבל תת-שאילתה'], why:'NOT IN (… NULL …) הוא לא-ידוע לכל שורה. NOT EXISTS בודק קיום ולא משווה ערכים.'},
+     {q:'תת-שאילתה "מתואמת" (correlated) היא:', a:'תת-שאילתה שמתייחסת לעמודה מהשאילתה החיצונית ורצה לכל שורה', o:['תת-שאילתה עם ORDER BY','תת-שאילתה בתוך WITH','תת-שאילתה שמחזירה יותר מעמודה אחת'], why:'לכן היא יקרה על טבלאות גדולות, ולכן בראיון מצפים שתדע גם חלופה עם JOIN או חלון.'}
+   ]},
+  {topic:'W', title:'פונקציות חלון (Window Functions)', pages:'ראיון', html:`
+<pre>function() OVER (PARTITION BY group_col ORDER BY sort_col)
+
+ROW_NUMBER()  -- 1,2,3,4   (תיקו נשבר שרירותית)
+RANK()        -- 1,2,2,4   (תיקו מדלג)
+DENSE_RANK()  -- 1,2,2,3   (תיקו לא מדלג)
+LAG(x) / LEAD(x)          -- הערך מהשורה הקודמת / הבאה
+SUM(x) OVER (ORDER BY d)  -- סכום רץ
+SUM(x) OVER ()            -- סך הכל, בלי לקבץ (לחישוב אחוזים)</pre>
+<ul>
+<li>חלון <b>לא מצמצם שורות</b>. GROUP BY מחזיר שורה לקבוצה; חלון מחזיר את כל השורות עם ערך מחושב לצידן.</li>
+<li>PARTITION BY = "לכל קבוצה בנפרד". בלי PARTITION BY החלון הוא כל הטבלה.</li>
+<li>מחושב אחרי WHERE, GROUP BY ו-HAVING, ולפני ORDER BY. לכן <b>אסור לסנן עליו ב-WHERE</b>: עוטפים בתת-שאילתה או CTE ומסננים בחוץ.</li>
+<li>"הראשון בכל קבוצה": ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ... DESC) ואז WHERE rn = 1.</li>
+<li>MySQL תומך מגרסה 8.0. SQLite כאן תומך. בראיון ייתכן שישאלו גם על הגרסה הישנה עם תת-שאילתה מתואמת.</li>
+</ul>`,
+   examples:[
+     {label:'ROW_NUMBER מול RANK מול DENSE_RANK על אותו תיקו', sql:"SELECT product_id, COUNT(*) AS cnt, ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) AS row_num, RANK() OVER (ORDER BY COUNT(*) DESC) AS rnk, DENSE_RANK() OVER (ORDER BY COUNT(*) DESC) AS dense FROM orders GROUP BY product_id ORDER BY cnt DESC, product_id"},
+     {label:'חלון שומר שורות; GROUP BY מצמצם', sql:"SELECT order_id, supplier_id, amount, SUM(amount) OVER (PARTITION BY supplier_id) AS supplier_total, ROUND(100.0 * amount / SUM(amount) OVER (PARTITION BY supplier_id), 1) AS pct_of_supplier FROM orders WHERE status = 'סופקה' AND supplier_id = 4"}
+   ],
+   quiz:[
+     {q:'ערכים 10, 8, 8, 5 ממוינים יורד. מה נותן RANK ומה נותן DENSE_RANK?', a:'RANK: 1,2,2,4 · DENSE_RANK: 1,2,2,3', o:['שניהם 1,2,2,3','שניהם 1,2,3,4','RANK: 1,2,2,3 · DENSE_RANK: 1,2,2,4'], why:'RANK מדלג אחרי תיקו, DENSE_RANK לא. ROW_NUMBER היה נותן 1,2,3,4 ושובר את התיקו שרירותית.'},
+     {q:'למה WHERE ROW_NUMBER() OVER (...) = 1 נכשל?', a:'חלון מחושב אחרי WHERE, אז צריך תת-שאילתה או CTE ולסנן בחוץ', o:['כי ROW_NUMBER מחזיר טקסט','כי חסר PARTITION BY','כי WHERE לא מקבל שוויון לפונקציה'], why:'סדר הביצוע: WHERE לפני SELECT, והחלון שייך לשלב ה-SELECT.'},
+     {q:'ההבדל בין SUM(amount) OVER (PARTITION BY supplier_id) ל-SUM(amount) ... GROUP BY supplier_id:', a:'החלון משאיר את כל השורות עם הסכום לצידן; GROUP BY מחזיר שורה אחת לספק', o:['אין הבדל בתוצאה','החלון מהיר יותר תמיד','GROUP BY לא מתעלם מ-NULL והחלון כן'], why:'ולכן חלון מתאים לחישוב "אחוז מהקבוצה" לכל שורה בלי JOIN חזרה לקבוצה.'}
+   ]},
   {topic:'X', title:'מה שההרצאה לא מכסה (ונדרש)', pages:'השלמה', html:`
 <p><b>1. סדר הביצוע הלוגי</b> (לא סדר הכתיבה):</p>
 <pre>FROM → JOIN/ON → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → LIMIT</pre>
@@ -914,9 +1038,27 @@ function groupByCheck(sql){
   if (!remaining.length) return null;
   return `ב-SELECT יש עמודה שאינה אגרגציה ואינה ב-GROUP BY: ${remaining.map(x=>'`'+x+'`').join(', ')}. SQLite מריץ את זה, MySQL (ONLY_FULL_GROUP_BY) יזרוק שגיאה. במבחן זה נחשב טעות.`;
 }
+function derivedAliasCheck(sql){
+  // MySQL: every derived table in FROM/JOIN needs an alias. Find "FROM (" / "JOIN (" and the token after the matching ")".
+  const s = sql.replace(/--[^\n]*/g,' ');
+  const re = /\b(from|join)\s*\(/gi; let m;
+  while ((m = re.exec(s))){
+    let i = m.index + m[0].length, depth = 1, q = null;
+    for (; i < s.length && depth > 0; i++){
+      const ch = s[i];
+      if (q){ if (ch === q) q = null; continue; }
+      if (ch === "'" || ch === '"'){ q = ch; continue; }
+      if (ch === '(') depth++; else if (ch === ')') depth--;
+    }
+    const rest = s.slice(i).replace(/^\s+/, '');
+    if (!/^(as\s+)?[a-z_]\w*/i.test(rest) || /^(where|group|having|order|limit|on|join|left|inner|union|select)\b/i.test(rest)) return 'טבלה נגזרת בלי כינוי: ב-MySQL זו שגיאה ("Every derived table must have its own alias"). הוסף AS t אחרי הסוגריים.';
+  }
+  return null;
+}
 function staticWarnings(sql){
   const w = [];
   const g = groupByCheck(sql); if (g) w.push(g);
+  const d = derivedAliasCheck(sql); if (d) w.push(d);
   if (/(=|<>|!=)\s*null\b/i.test(sql)) w.push('השוואה ל-NULL עם = או <> תמיד מחזירה לא-ידוע. השתמש ב-IS NULL / IS NOT NULL.');
   if ((sql.match(/\bselect\b/gi)||[]).length === 1){
     const wm = /\bwhere\b([\s\S]*?)(\bgroup\s+by\b|\bhaving\b|\border\s+by\b|\blimit\b|;|$)/i.exec(sql);
@@ -930,6 +1072,8 @@ function translateError(msg){
   if ((mm = /no such column: (\S+)/.exec(m))) return `אין עמודה בשם ${mm[1]}. בדוק איות, או שהכינוי של הטבלה לא הוגדר, או שאתה מתייחס לכינוי מה-SELECT בתוך WHERE (שם הוא עוד לא קיים).`;
   if ((mm = /no such table: (\S+)/.exec(m))) return `אין טבלה בשם ${mm[1]}. הטבלאות: suppliers, products, orders, returns.`;
   if (/misuse of aggregate/i.test(m)) return 'אגרגציה במקום לא נכון: ב-WHERE או בתוך אגרגציה אחרת. תנאי על אגרגציה הולך ל-HAVING.';
+  if (/misuse of window function/i.test(m)) return 'פונקציית חלון במקום לא נכון: אסור ב-WHERE, ב-GROUP BY או ב-HAVING. חשב אותה בתת-שאילתה או ב-CTE, וסנן בחוץ.';
+  if (/no such function: (\S+)/.test(m)) return `הפונקציה ${/no such function: (\S+)/.exec(m)[1]} לא קיימת ב-SQLite. אם זו פונקציית MySQL (DATEDIFF, DATE_FORMAT, CONCAT, IF), ראה את טבלת ההבדלים בתיאוריה.`;
   if (/ambiguous column name: (\S+)/.test(m)) return 'שם עמודה דו-משמעי: העמודה קיימת בשתי טבלאות ב-JOIN. הוסף קידומת (o.supplier_id).';
   if (/SELECTs to the left and right of UNION do not have the same number of result columns/i.test(m)) return 'ל-UNION צריך אותו מספר עמודות בשני הצדדים.';
   if ((mm = /near "([^"]*)": syntax error/.exec(m))) return `שגיאת תחביר ליד "${mm[1]}". בדוק פסיק מיותר לפני FROM, מילת מפתח חסרה, או סוגריים.`;
@@ -949,6 +1093,8 @@ function translateError(msg){
   let hintsShown = {};
   let timer = null;
   let exam = null;
+  const tStart = {};   // when the user started typing on an exercise, for solve-time stats
+  function fmtSecs(s){ return Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0'); }
 
   function load(){
     try { const raw = localStorage.getItem(STORE_KEY); if (raw) return Object.assign({progress:{}, journal:[], quiz:{}}, JSON.parse(raw)); } catch(e){}
@@ -957,7 +1103,7 @@ function translateError(msg){
   function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} }
   function prog(id){ return state.progress[id] || (state.progress[id] = {attempts:0, solved:false, hints:0, solution:false}); }
   function ex(id){ return EXERCISES.find(e=>e.id===id); }
-  function topic(k){ return TOPICS.find(t=>t.key===k) || (k==='X' ? {key:'X',name:'השלמה',full:'השלמות'} : null); }
+  function topic(k){ return TOPICS.find(t=>t.key===k) || (k==='X' ? {key:'X',name:'השלמה',full:'השלמות'} : k==='W' ? {key:'W',name:'חלונות',full:'פונקציות חלון'} : null); }
   function banner(msg){ const b=$('#banner'); b.textContent=msg; b.classList.add('show'); clearTimeout(banner.t); banner.t=setTimeout(()=>b.classList.remove('show'),2600); }
   function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   function fmtTs(ts){ const d=new Date(ts); return d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
@@ -1017,6 +1163,55 @@ function translateError(msg){
     const showCols = (name)=>{ sc.innerHTML=''; const back=mk(sc, '← טבלאות', '', 'back'); back.onclick=showTables; for (const c of DATA[name].cols){ const col=c.split(' ')[0]; mk(sc, col, col); } mk(sc, name+'.', name+'.'); sc.scrollLeft=0; };
     showTables();
   }
+
+  // query anatomy: the user's own query, listed in logical execution order
+  const CLAUSE_RE = /^(with|select|from|where|group\s+by|having|order\s+by|limit|union(?:\s+all)?|(?:(?:left|right|inner|cross)(?:\s+outer)?\s+)?join)\b/i;
+  function splitClauses(sql){
+    const s = sql.replace(/--[^\n]*/g,' ');
+    const marks = []; let depth=0, q=null;
+    for (let i=0;i<s.length;i++){
+      const ch=s[i];
+      if (q){ if (ch===q) q=null; continue; }
+      if (ch==="'"||ch==='"'){ q=ch; continue; }
+      if (ch==='('){ depth++; continue; } if (ch===')'){ depth--; continue; }
+      if (depth!==0) continue;
+      if (i>0 && /\w/.test(s[i-1])) continue;
+      const m = CLAUSE_RE.exec(s.slice(i)); if (m){ marks.push({i, kw:m[1].replace(/\s+/g,' ').toUpperCase()}); i += m[0].length-1; }
+    }
+    return marks.map((m,k)=>({kw:m.kw, text:s.slice(m.i, k+1<marks.length?marks[k+1].i:s.length).trim()}));
+  }
+  function anatomy(sql){
+    const cl = splitClauses(sql);
+    if (!cl.some(c=>c.kw==='SELECT')) return null;
+    const get = kw => cl.filter(c=>c.kw===kw);
+    const steps = [];
+    const first = (kw)=>get(kw)[0];
+    if (first('WITH')) steps.push(['WITH', first('WITH').text, 'ה-CTE מחושב ראשון, כטבלה זמנית שהשאילתה הראשית משתמשת בה.']);
+    if (first('FROM')) steps.push(['FROM', first('FROM').text, 'מאיזו טבלה (או תת-שאילתה) מתחילים. אם יש JOIN, השורות מוצלבות כאן.']);
+    for (const j of cl.filter(c=>/JOIN/.test(c.kw))) steps.push([j.kw, j.text, /LEFT/.test(j.kw)?'כל שורות השמאל נשמרות, NULL במקום התאמה חסרה. תנאי על הטבלה הימנית שייך ל-ON.':'רק שורות עם התאמה בשני הצדדים.']);
+    if (first('WHERE')) steps.push(['WHERE', first('WHERE').text, 'סינון שורות בודדות, לפני הקיבוץ. כינויים מה-SELECT ואגרגציות עדיין לא קיימים כאן.']);
+    if (first('GROUP BY')) steps.push(['GROUP BY', first('GROUP BY').text, 'השורות מתקפלות לקבוצה אחת לכל צירוף ערכים. מכאן והלאה רואים קבוצות, לא שורות.']);
+    if (first('HAVING')) steps.push(['HAVING', first('HAVING').text, 'סינון קבוצות, אחרי הקיבוץ. כאן מותר COUNT, SUM, AVG.']);
+    const sel = first('SELECT');
+    if (sel){
+      const hasWin = /\bover\s*\(/i.test(sel.text);
+      if (hasWin) steps.push(['OVER ( )', 'פונקציות חלון', 'מחושבות על התוצאה שאחרי WHERE/GROUP BY/HAVING, לפני ORDER BY. לכן אי אפשר לסנן עליהן ב-WHERE.']);
+      steps.push(['SELECT', sel.text, /^select\s+distinct\b/i.test(sel.text)?'חישוב העמודות ואז DISTINCT מסיר שורות כפולות.':'רק עכשיו מחושבות העמודות והכינויים.']);
+    }
+    for (const u of get('UNION').concat(get('UNION ALL'))) steps.push([u.kw, u.text, u.kw==='UNION'?'מאחד תוצאות ומסיר כפילויות.':'מאחד תוצאות ומשאיר כפילויות (מהיר יותר).']);
+    if (first('ORDER BY')) steps.push(['ORDER BY', first('ORDER BY').text, 'מיון התוצאה הסופית. כינויים מה-SELECT כבר קיימים.']);
+    if (first('LIMIT')) steps.push(['LIMIT', first('LIMIT').text, 'חיתוך לאחר המיון.']);
+    return steps;
+  }
+  $('#anatBtn').onclick=()=>{
+    const el=$('#anatomy'); const sql=$('#editor').value.trim();
+    if (!sql){ el.hidden=true; return; }
+    if (!el.hidden && el.dataset.sql===sql){ el.hidden=true; return; }
+    const steps=anatomy(sql);
+    el.hidden=false; el.dataset.sql=sql;
+    if (!steps){ el.innerHTML='<span class="muted">לא זיהיתי SELECT. כתוב שאילתה ואז לחץ שוב.</span>'; return; }
+    el.innerHTML=`<div class="eyebrow">השאילתה שלך לפי סדר הביצוע</div><ol>${steps.map(([kw,text,ex])=>`<li><b>${esc(kw)}</b> <span class="cl">${esc(text.length>90?text.slice(0,90)+'…':text)}</span><br><span class="ex">${esc(ex)}</span></li>`).join('')}</ol>`;
+  };
 
   // theme
   function applyTheme(){
@@ -1096,7 +1291,9 @@ function translateError(msg){
     $('#hints').innerHTML=''; hintsShown[id]=hintsShown[id]||0;
     for (let i=0;i<hintsShown[id];i++) appendHint(e.hints[i]);
     $('#solution').hidden=true; $('#solution').innerHTML='';
+    $('#anatomy').hidden=true;
     $('#resultCard').hidden=true;
+    tStart[id] = null;
     updateSolBtn();
     renderList();
     document.querySelectorAll('#exlist [aria-current=true]').forEach(b=>b.scrollIntoView({block:'nearest'}));
@@ -1131,7 +1328,7 @@ function translateError(msg){
   $('#prevBtn').onclick=()=>step(-1); $('#nextBtn').onclick=()=>step(1);
   function step(d){ const list=EXERCISES.filter(e=>filter==='all'||e.topic===filter); let i=list.findIndex(e=>e.id===current); i=(i+d+list.length)%list.length; openExercise(list[i].id); }
   function saveDraft(){ state.drafts=state.drafts||{}; state.drafts[current]=$('#editor').value; save(); }
-  $('#editor').addEventListener('input', ()=>{ clearTimeout(saveDraft.t); saveDraft.t=setTimeout(saveDraft,400); });
+  $('#editor').addEventListener('input', ()=>{ if (!tStart[current] && !prog(current).solved) tStart[current]=Date.now(); clearTimeout(saveDraft.t); saveDraft.t=setTimeout(saveDraft,400); });
   $('#editor').addEventListener('keydown', e=>{ if ((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); runCurrent(); } });
   $('#run').onclick=runCurrent;
 
@@ -1171,13 +1368,14 @@ function translateError(msg){
       p.solved=true; p.attempts++;
       // spaced repetition, silent: each solve pushes the next review further out
       if (first || wasDue){ p.stage=(p.stage||0)+1; p.due=Date.now()+[3,7,21,60][Math.min(p.stage-1,3)]*86400000; }
+      let secs=null; if (first && tStart[e.id]){ secs=Math.round((Date.now()-tStart[e.id])/1000); if (secs>=3 && secs<=3600) p.seconds=secs; else secs=null; }
       save();
-      if (first) log({kind:'solved', ex:e.id, topic:e.topic, sql, attempts:p.attempts, hints:p.hints});
+      if (first) log({kind:'solved', ex:e.id, topic:e.topic, sql, attempts:p.attempts, hints:p.hints, secs});
       else if (wasDue) log({kind:'solved', ex:e.id, topic:e.topic, sql, attempts:1, hints:0, review:true});
       if (exam && exam.results[e.id]) exam.results[e.id].correct = true;
       try { if (navigator.vibrate) navigator.vibrate(12); } catch(err){}
       fb.className='feedback ok';
-      fb.innerHTML=`<span class="icon">✓</span><div><b>נכון.</b> ${p.attempts===1&&!p.hints?'בניסיון ראשון ובלי רמזים.':wasDue?'חזרה הצליחה.':`ניסיון ${p.attempts}${p.hints?`, ${p.hints} רמזים`:''}.`} ${exam?'':nextSuggestion()}</div>`;
+      fb.innerHTML=`<span class="icon">✓</span><div><b>נכון.</b> ${p.attempts===1&&!p.hints?'בניסיון ראשון ובלי רמזים.':wasDue?'חזרה הצליחה.':`ניסיון ${p.attempts}${p.hints?`, ${p.hints} רמזים`:''}.`}${secs?` זמן: ${fmtSecs(secs)}.`:''} ${exam?'':nextSuggestion()}</div>`;
       renderProgress(); renderList(); updateSolBtn(); scrollToResult(); return;
     }
     if (cmp.ok && warns.length){
@@ -1195,7 +1393,8 @@ function translateError(msg){
       detail = show(cmp.missing,'שורות שחסרות אצלך')+show(cmp.extra,'שורות מיותרות אצלך');
     }
     fb.className='feedback '+(cmp.orderOnly?'warn':'bad');
-    fb.innerHTML=`<span class="icon">${cmp.orderOnly?'!':'×'}</span><div><b>${cmp.orderOnly?'כמעט.':'לא תואם.'}</b><ul>${cmp.problems.map(x=>`<li>${esc(x)}</li>`).join('')}${detail}${warns.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>${p.attempts>=2&&(hintsShown[current]||0)<e.hints.length?'<span class="tiny muted">יש רמז זמין.</span>':''}</div>`;
+    const colsHint = p.attempts>=2 && !exam ? `<li>העמודות הצפויות (${expected.columns.length}): <span class="mono" style="direction:ltr;unicode-bidi:isolate">${expected.columns.map(esc).join(', ')}</span></li>` : '';
+    fb.innerHTML=`<span class="icon">${cmp.orderOnly?'!':'×'}</span><div><b>${cmp.orderOnly?'כמעט.':'לא תואם.'}</b><ul>${cmp.problems.map(x=>`<li>${esc(x)}</li>`).join('')}${detail}${warns.map(w=>`<li>${esc(w)}</li>`).join('')}${colsHint}</ul>${p.attempts>=2&&!exam&&(hintsShown[current]||0)<e.hints.length?'<span class="tiny muted">יש רמז זמין.</span>':''}</div>`;
     renderList(); renderHead(); scrollToResult();
   }
   function scrollToResult(){ if (window.innerWidth<=820) $('#resultCard').scrollIntoView({behavior:'smooth',block:'start'}); }
@@ -1287,11 +1486,13 @@ function translateError(msg){
     const solved=EXERCISES.filter(e=>prog(e.id).solved).length;
     const wrong=j.filter(x=>x.kind==='wrong').length, errs=j.filter(x=>x.kind==='sql_error').length, sols=j.filter(x=>x.kind==='solution').length, qz=j.filter(x=>x.kind==='quiz').length;
     const firstTry=j.filter(x=>x.kind==='solved'&&!x.quiz&&x.attempts===1&&!x.hints).length;
-    $('#stats').innerHTML=[[solved+'/'+EXERCISES.length,'תרגילים שנפתרו'],[firstTry,'בניסיון ראשון בלי רמז'],[wrong,'תוצאות לא תואמות'],[errs,'שגיאות SQL'],[qz,'שאלות ידע שגויות'],[sols,'פתרונות שנפתחו'],[streak(),'ימי רצף']].map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+    const tiles=[[solved+'/'+EXERCISES.length,'תרגילים שנפתרו'],[firstTry,'בניסיון ראשון בלי רמז'],[wrong,'תוצאות לא תואמות'],[errs,'שגיאות SQL'],[qz,'שאלות ידע שגויות'],[sols,'פתרונות שנפתחו'],[streak(),'ימי רצף']];
+    for (const lvl of [1,2,3]){ const t=EXERCISES.filter(e=>e.level===lvl && prog(e.id).seconds); if (t.length>=2) tiles.push([fmtSecs(t.reduce((a,e)=>a+prog(e.id).seconds,0)/t.length), `זמן ממוצע לפתרון, ${['','בסיסי','בינוני','מתקדם'][lvl]} (${t.length})`]); }
+    $('#stats').innerHTML=tiles.map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
     const ts=$('#topicstats'); ts.innerHTML='';
-    for (const t of [...TOPICS, {key:'X',name:'השלמה'}]){
+    for (const t of [...TOPICS, {key:'W',name:'חלונות'}, {key:'X',name:'השלמה'}]){
       const n=j.filter(x=>x.topic===t.key&&(x.kind==='wrong'||x.kind==='sql_error'||x.kind==='solution'||x.kind==='quiz')).length;
-    if (!n && t.key==='X') continue;
+    if (!n && (t.key==='X' || t.key==='W')) continue;
       const c=document.createElement('span'); c.className='chip'; c.innerHTML=`${esc(t.name)} <b>${n}</b> טעויות`; c.style.borderColor = n>=3?'var(--bad)':n>0?'var(--warn)':'var(--line)'; ts.appendChild(c);
     }
     const el=$('#journal'); el.innerHTML='';
@@ -1370,7 +1571,7 @@ function translateError(msg){
     const due=EXERCISES.filter(e=>{ const p=prog(e.id); return p.solved && p.due && p.due<=now; });
     if (due.length) return due[Math.floor(Math.random()*due.length)].id;
     const counts={};
-    for (const x of state.journal) if (x.kind!=='solved' && x.topic!=='X') counts[x.topic]=(counts[x.topic]||0)+1;
+    for (const x of state.journal) if (x.kind!=='solved' && x.kind!=='exam') counts[x.topic==='W'||x.topic==='X' ? 'I' : x.topic]=(counts[x.topic==='W'||x.topic==='X' ? 'I' : x.topic]||0)+1;
     const weak=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
     let pool = weak ? EXERCISES.filter(e=>e.topic===weak[0]) : EXERCISES.filter(e=>!prog(e.id).solved);
     if (!pool.length) pool=EXERCISES;
@@ -1447,7 +1648,8 @@ function translateError(msg){
   // exam mode: 10 random exercises, 30 minutes, no hints, no solutions. Opt-in only.
   const EXAM_N = 10, EXAM_MIN = 30;
   function startExam(){
-    const ids = shuffled(EXERCISES.map(e=>e.id), Date.now() % 100000).slice(0, EXAM_N);
+    const pool = EXERCISES.filter(e => state.examScope==='all' ? true : e.topic!=='I');
+    const ids = shuffled(pool.map(e=>e.id), Date.now() % 100000).slice(0, EXAM_N);
     exam = {ids, idx:0, started:Date.now(), deadline:Date.now()+EXAM_MIN*60000, results:{}};
     ids.forEach(id=>exam.results[id]={correct:false});
     if (timer && timer.h){ clearInterval(timer.h); timer=null; }
@@ -1486,9 +1688,10 @@ function translateError(msg){
     el.innerHTML=`<div class="eyebrow">מצב מבחן</div>
       <p style="margin:6px 0 4px"><b>${EXAM_N} תרגילים אקראיים, ${EXAM_MIN} דקות, בלי רמזים ובלי פתרונות.</b></p>
       <p class="muted tiny" style="max-width:70ch">הכי קרוב למה שמחכה במבחן ובראיון. הציון נשמר כאן וביומן, ולא מופיע בשום מקום אחר. אפשר לבטל באמצע בלי שיירשם.</p>
-      <div class="toolbar" style="margin-top:10px"><button class="primary" type="button" id="examStart" ${exam?'disabled':''}>${exam?'מבחן פעיל':'התחל מבחן'}</button></div>
+      <div class="toolbar" style="margin-top:10px"><button class="primary" type="button" id="examStart" ${exam?'disabled':''}>${exam?'מבחן פעיל':'התחל מבחן'}</button><select id="examScope"><option value="syllabus" ${state.examScope!=='all'?'selected':''}>סילבוס הקורס (נושאים A–H)</option><option value="all" ${state.examScope==='all'?'selected':''}>הכל, כולל ראיון אנליסט</option></select></div>
       ${list.length?`<div class="examlist">${list.slice(0,10).map(r=>`<div><span>${fmtTs(r.ts)} · ${r.minutes} דק׳${r.wrong.length?` · שגויות: <span class="mono" style="direction:ltr;unicode-bidi:isolate">${r.wrong.join(', ')}</span>`:''}</span><span class="score">${r.score}/${r.total}</span></div>`).join('')}</div>`:''}`;
     $('#examStart').onclick=()=>{ if (!db){ banner('המנוע עדיין נטען'); return; } startExam(); };
+    $('#examScope').onchange=ev=>{ state.examScope=ev.target.value; save(); };
   }
 
   // install tip (iOS Safari, not yet installed)

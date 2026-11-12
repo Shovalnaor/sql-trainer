@@ -5,7 +5,7 @@ const root = path.resolve(__dirname, '..');
 const htmlPath = process.argv[2] ? path.resolve(process.argv[2]) : path.join(root, 'index.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const bank = html.split('//<BANK>')[1].split('//</BANK>')[0];
-const api = new Function(bank + '\nreturn {DATA,EXERCISES,TOPICS,THEORY,buildDb,runQuery,compare,staticWarnings,isSelectOnly,translateError};')();
+const api = new Function(bank + '\nreturn {DATA,EXERCISES,TOPICS,THEORY,buildDb,runQuery,compare,staticWarnings,isSelectOnly,translateError,derivedAliasCheck};')();
 const initSqlJs = require(path.join(root, 'sql-asm.js'));
 
 initSqlJs().then(SQL => {
@@ -53,6 +53,10 @@ initSqlJs().then(SQL => {
   expect('= NULL warned', api.staticWarnings("SELECT * FROM orders WHERE amount = NULL").length === 1);
   expect('aggregate in WHERE warned', api.staticWarnings("SELECT supplier_id FROM orders WHERE COUNT(*) > 3 GROUP BY supplier_id").length === 1);
   expect('HAVING not mistaken for WHERE', api.staticWarnings("SELECT district FROM orders WHERE status='x' GROUP BY district HAVING SUM(amount) > 1").length === 0);
+  expect('derived table without alias warned', !!api.derivedAliasCheck('SELECT AVG(cnt) FROM (SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id)'));
+  expect('derived table with alias ok', !api.derivedAliasCheck('SELECT AVG(cnt) FROM (SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id) t WHERE cnt > 1'));
+  expect('scalar subquery not flagged', !api.derivedAliasCheck('SELECT order_id FROM orders WHERE amount > (SELECT AVG(amount) FROM orders)'));
+  expect('window in WHERE translated', /חלון/.test(api.translateError('misuse of window function ROW_NUMBER()')));
   expect('non-select blocked', !api.isSelectOnly("DROP TABLE orders") && !api.isSelectOnly("SELECT 1; DELETE FROM orders"));
   expect('error translated', /product_nme/.test(api.translateError('no such column: product_nme')));
 
