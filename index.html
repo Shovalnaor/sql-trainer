@@ -1417,7 +1417,7 @@ function translateError(msg){
   // schema diagram + tables + theory
   function renderErd(){
     const box=(x,y,name,cols)=>`<g><rect class="box" x="${x}" y="${y}" width="170" height="${28+cols.length*16}" rx="8"/><text class="ttl" x="${x+85}" y="${y+19}" text-anchor="middle">${name}</text><line x1="${x+10}" y1="${y+26}" x2="${x+160}" y2="${y+26}" stroke="var(--line)"/>${cols.map((c,i)=>`<text class="${c.startsWith('*')?'pk':'col'}" x="${x+14}" y="${y+42+i*16}">${c.replace('*','')}</text>`).join('')}</g>`;
-    $('#erd').innerHTML=`<svg viewBox="0 0 820 230" xmlns="http://www.w3.org/2000/svg" direction="ltr">
+    $('#erd').innerHTML=`<svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg" direction="ltr">
       ${box(20,20,'suppliers',['*supplier_id','supplier_name','region','rating'])}
       ${box(325,20,'orders',['*order_id','order_date','supplier_id','product_id','condition / status','quantity / amount','district'])}
       ${box(630,20,'products',['*product_id','product_name','category','list_price'])}
