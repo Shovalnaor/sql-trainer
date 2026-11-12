@@ -1,0 +1,4 @@
+# Dependencies / build artifacts: none. Keep the repo static.
+.DS_Store
+Thumbs.db
+.claude/

@@ -1,0 +1,1360 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מאמן SQL</title>
+<meta name="description" content="מאמן SQL אינטראקטיבי בעברית: 44 תרגילים, מנוע SQL בדפדפן, תיאוריה עם דוגמאות חיות, מבחני ידע, בלוקי זמן ויומן טעויות. עובד גם בלי אינטרנט.">
+<meta name="theme-color" content="#0B6E78">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="מאמן SQL">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: RTL workbench. Right rail = exercise list (drawer on phones), center = editor + result, header strip = topic progress. */
+:root{
+  --bg:#F4F6F5; --surface:#FFFFFF; --surface-2:#EDF1F0; --fg:#1A2530; --muted:#5F6E7A; --line:#D6DEDC;
+  --accent:#0B6E78; --accent-soft:#D9EEF0; --accent-ink:#FFFFFF;
+  --ok:#1E7A4C; --ok-soft:#DDF2E6; --warn:#9A6A12; --warn-soft:#FBEFD2; --bad:#B23A2E; --bad-soft:#FBE2DE;
+  --code-bg:#FBFCFC; --code-fg:#17212B; --shadow:0 1px 2px rgba(20,35,45,.06), 0 6px 18px -12px rgba(20,35,45,.25);
+  --font-ui:"Heebo",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,"Courier New",monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F161D; --surface:#172029; --surface-2:#1E2932; --fg:#E7ECF0; --muted:#97A5B1; --line:#2A3641;
+  --accent:#5FC2BC; --accent-soft:#163C40; --accent-ink:#0B1A1C;
+  --ok:#6FCF97; --ok-soft:#173528; --warn:#E3B858; --warn-soft:#3A2F14; --bad:#F08A7C; --bad-soft:#42201C;
+  --code-bg:#0C1319; --code-fg:#E7ECF0; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 20px -14px rgba(0,0,0,.6);
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0F161D; --surface:#172029; --surface-2:#1E2932; --fg:#E7ECF0; --muted:#97A5B1; --line:#2A3641;
+  --accent:#5FC2BC; --accent-soft:#163C40; --accent-ink:#0B1A1C;
+  --ok:#6FCF97; --ok-soft:#173528; --warn:#E3B858; --warn-soft:#3A2F14; --bad:#F08A7C; --bad-soft:#42201C;
+  --code-bg:#0C1319; --code-fg:#E7ECF0; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 20px -14px rgba(0,0,0,.6);
+  color-scheme:dark }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-ui);font-size:15px;line-height:1.55;direction:rtl;padding-top:env(safe-area-inset-top,0px)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.wrap{max-width:1240px;margin:0 auto;padding-block:16px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{margin:0;text-wrap:balance;line-height:1.25}
+h1{font-size:1.7rem;font-weight:800;letter-spacing:-.01em}
+h2{font-size:1.15rem;font-weight:700}
+h3{font-size:1rem;font-weight:700}
+p{margin:0}
+a{color:var(--accent)}
+code,pre,textarea.sql,.mono{font-family:var(--font-mono);font-size:.9rem}
+code{background:var(--surface-2);padding:.05em .35em;border-radius:4px;direction:ltr;unicode-bidi:isolate}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:8px;padding:.45rem .85rem;transition:background .15s,border-color .15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button:hover{border-color:var(--accent)}
+button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+button.primary:hover{filter:brightness(1.05)}
+button.ghost{background:transparent}
+button.small{padding:.25rem .6rem;font-size:.85rem}
+button:disabled{opacity:.5;cursor:not-allowed}
+.muted{color:var(--muted)}
+.tiny{font-size:.8rem}
+.eyebrow{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+select{font:inherit;padding:.35rem .5rem;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;margin-bottom:12px}
+.top .sub{color:var(--muted);margin-top:4px;max-width:60ch}
+.headstats{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end}
+.hstat{display:flex;flex-direction:column;align-items:flex-start;line-height:1.1}
+.hstat .n{font-size:1.45rem;font-weight:800;font-variant-numeric:tabular-nums}
+.hstat .l{font-size:.74rem;color:var(--muted)}
+.themeBtn{padding:.3rem .55rem;font-size:.8rem}
+.progress{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:.15rem .6rem .15rem .3rem;font-size:.8rem;background:var(--surface);cursor:pointer}
+.chip .bar{width:44px;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;direction:ltr}
+.chip .bar i{display:block;height:100%;background:var(--accent)}
+.chip.done .bar i{background:var(--ok)}
+.chip b{font-variant-numeric:tabular-nums;font-weight:600}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{border:0;border-bottom:3px solid transparent;border-radius:0;background:transparent;padding:.55rem .9rem;color:var(--muted);font-weight:600;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--fg);border-bottom-color:var(--accent)}
+.panel[hidden]{display:none}
+
+/* practice layout */
+.practice{display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px;align-items:start}
+.rail{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 8px);max-height:calc(100vh - 32px);overflow:auto;min-width:0}
+.rail .railhead{display:none}
+.rail .filters{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.rail .filters button{padding:.2rem .55rem;font-size:.8rem;border-radius:999px}
+.rail .filters button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--fg)}
+.exlist{display:flex;flex-direction:column;gap:2px}
+.exlist button{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;text-align:right;border:0;background:transparent;padding:.45rem .5rem;border-radius:8px;font-size:.88rem;line-height:1.3}
+.exlist button:hover{background:var(--surface-2)}
+.exlist button[aria-current="true"]{background:var(--accent-soft)}
+.exlist .id{font-family:var(--font-mono);font-size:.72rem;color:var(--muted);direction:ltr}
+.exlist .dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.exlist .dot.solved{background:var(--ok)}
+.exlist .dot.tried{background:var(--warn)}
+.exlist .title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.exlist .group{margin:10px 0 4px;font-size:.76rem;color:var(--muted);font-weight:700;letter-spacing:.04em}
+
+.main{display:flex;flex-direction:column;gap:14px;min-width:0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow);min-width:0}
+.qhead{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-bottom:8px}
+.qhead .spacer{flex:1}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:.76rem;border-radius:6px;padding:.1rem .5rem;background:var(--surface-2);color:var(--muted);font-weight:600}
+.badge.lvl1{color:var(--ok)}.badge.lvl2{color:var(--warn)}.badge.lvl3{color:var(--bad)}
+.question{font-size:1.08rem;font-weight:500;max-width:70ch}
+.note{margin-top:8px;font-size:.88rem;color:var(--muted);max-width:70ch}
+#railToggle{display:none}
+textarea.sql{width:100%;min-height:150px;resize:vertical;direction:ltr;text-align:left;background:var(--code-bg);color:var(--code-fg);border:1px solid var(--line);border-radius:10px;padding:12px;line-height:1.5;tab-size:2}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.toolbar .spacer{flex:1}
+.kbd{font-family:var(--font-mono);font-size:.72rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 .35em;color:var(--muted);direction:ltr;display:inline-block}
+
+.feedback{border-radius:10px;padding:12px 14px;border:1px solid var(--line);background:var(--surface-2);display:flex;gap:10px;align-items:flex-start}
+.feedback.ok{background:var(--ok-soft);border-color:var(--ok)}
+.feedback.warn{background:var(--warn-soft);border-color:var(--warn)}
+.feedback.bad{background:var(--bad-soft);border-color:var(--bad)}
+.feedback .icon{font-weight:800;font-size:1.1rem;line-height:1.3}
+.feedback ul{margin:.3rem 0 0;padding-right:1.1rem}
+.feedback li{margin:.15rem 0}
+.hints{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.hint{border-right:3px solid var(--accent);padding:.35rem .7rem;background:var(--accent-soft);border-radius:6px;font-size:.92rem}
+.solution{margin-top:10px}
+.solution pre{margin:.4rem 0 0;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:10px;direction:ltr;text-align:left;overflow:auto;white-space:pre-wrap}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;max-height:420px;overflow-y:auto;-webkit-overflow-scrolling:touch;direction:ltr}
+table.res{border-collapse:collapse;width:100%;font-size:.88rem;direction:ltr;text-align:left}
+table.res th,table.res td{padding:.35rem .6rem;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+table.res th{position:sticky;top:0;background:var(--surface-2);font-family:var(--font-mono);font-size:.78rem;font-weight:600;text-align:left}
+table.res td.null{color:var(--muted);font-style:italic}
+table.res td.he{direction:rtl;text-align:right}
+.meta{display:flex;gap:14px;flex-wrap:wrap;font-size:.84rem;color:var(--muted);margin:8px 0}
+
+/* sessions */
+.sessions{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.session h3{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.session .when{font-size:.8rem;color:var(--muted);font-weight:500}
+.phases{list-style:none;margin:10px 0 12px;padding:0;display:flex;flex-direction:column;gap:4px}
+.phases li{display:flex;justify-content:space-between;gap:10px;font-size:.9rem;padding:.25rem .5rem;border-radius:6px}
+.phases li .m{font-variant-numeric:tabular-nums;color:var(--muted)}
+.phases li.now{background:var(--accent-soft);font-weight:600}
+.phases li.past{color:var(--muted);text-decoration:line-through}
+.timerbox{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px}
+.clock{font-family:var(--font-mono);font-size:2.6rem;font-weight:600;font-variant-numeric:tabular-nums;direction:ltr;line-height:1}
+.clock.low{color:var(--warn)}
+.phasebar{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden;direction:ltr;flex-basis:100%}
+.phasebar i{display:block;height:100%;background:var(--accent);transition:width 1s linear}
+.recall textarea{width:100%;min-height:130px;font:inherit;background:var(--code-bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px;resize:vertical}
+
+/* journal */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.stat .n{font-size:1.5rem;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat .l{font-size:.8rem;color:var(--muted)}
+.journal{display:flex;flex-direction:column;gap:8px}
+.entry{display:grid;grid-template-columns:auto 1fr auto;gap:10px 14px;align-items:start;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.entry .kind{font-size:.74rem;font-weight:700;border-radius:6px;padding:.1rem .45rem;white-space:nowrap}
+.entry .kind.wrong{background:var(--warn-soft);color:var(--warn)}
+.entry .kind.sql_error{background:var(--bad-soft);color:var(--bad)}
+.entry .kind.solution{background:var(--surface-2);color:var(--muted)}
+.entry .kind.solved{background:var(--ok-soft);color:var(--ok)}
+.entry .kind.quiz{background:var(--warn-soft);color:var(--warn)}
+.entry pre{margin:.3rem 0 0;font-family:var(--font-mono);font-size:.8rem;direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-word;color:var(--muted)}
+.entry .ts{font-size:.76rem;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.topicstats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.topicstats .chip{cursor:default}
+
+/* schema + theory */
+.erd{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:14px;overflow-x:auto;direction:ltr}
+.erd svg{display:block;min-width:560px;width:100%;max-width:820px;margin:0 auto;font-family:var(--font-mono)}
+.erd .box{fill:var(--surface-2);stroke:var(--line)}
+.erd .ttl{fill:var(--fg);font-weight:700;font-size:13px}
+.erd .col{fill:var(--muted);font-size:11px}
+.erd .pk{fill:var(--accent);font-size:11px;font-weight:700}
+.erd .rel{stroke:var(--accent);fill:none;stroke-width:1.6}
+.erd .lbl{fill:var(--muted);font-size:10px;font-family:var(--font-ui)}
+.schema{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:22px}
+.tbl h3{font-family:var(--font-mono);direction:ltr;text-align:left;font-size:.95rem}
+.tbl ul{list-style:none;margin:8px 0 10px;padding:0;direction:ltr;text-align:left;font-family:var(--font-mono);font-size:.82rem}
+.tbl li{display:flex;justify-content:space-between;gap:8px;padding:.15rem 0;border-bottom:1px dashed var(--line)}
+.tbl li span:last-child{color:var(--muted)}
+.tbl .desc{font-size:.84rem;color:var(--muted);margin-bottom:6px}
+details.theory{border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-bottom:8px}
+details.theory summary{cursor:pointer;padding:.7rem 1rem;font-weight:700;display:flex;justify-content:space-between;gap:10px;align-items:center;list-style:none}
+details.theory summary::-webkit-details-marker{display:none}
+details.theory summary::after{content:"+";color:var(--muted);font-weight:400;font-size:1.1rem}
+details.theory[open] summary::after{content:"−"}
+details.theory summary .pg{font-weight:500;color:var(--muted);font-size:.82rem;margin-right:auto}
+details.theory summary .qs{font-size:.74rem;font-weight:600;border-radius:6px;padding:.05rem .45rem;background:var(--surface-2);color:var(--muted)}
+details.theory summary .qs.full{background:var(--ok-soft);color:var(--ok)}
+details.theory .body{padding:0 1rem 1rem;max-width:80ch}
+details.theory .body p{margin:.4rem 0}
+details.theory .body ul{margin:.3rem 0;padding-right:1.2rem}
+details.theory pre{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:10px;direction:ltr;text-align:left;overflow:auto;margin:.5rem 0;font-size:.85rem;white-space:pre-wrap}
+.diff{width:100%;border-collapse:collapse;font-size:.88rem}
+.diff th,.diff td{border-bottom:1px solid var(--line);padding:.35rem .5rem;text-align:right;vertical-align:top}
+.diff code{font-size:.8rem}
+.examples{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.example{margin:8px 0}
+.example .exhead{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px}
+.example .exhead span{font-size:.88rem}
+.example pre{margin:4px 0}
+.example .exres{margin-top:6px}
+.example .exres .tablewrap{max-height:220px}
+.quiz{margin-top:14px;border-top:1px dashed var(--line);padding-top:10px}
+.qitem{margin:10px 0 14px}
+.qitem .qq{font-weight:600;margin-bottom:6px}
+.opts{display:flex;flex-direction:column;gap:5px}
+.opts button{text-align:right;padding:.5rem .7rem;border-radius:8px;font-size:.92rem;line-height:1.4}
+.opts button.right{background:var(--ok-soft);border-color:var(--ok)}
+.opts button.wrongpick{background:var(--bad-soft);border-color:var(--bad)}
+.opts button:disabled{opacity:1;cursor:default}
+.opts button:disabled:not(.right):not(.wrongpick){opacity:.55}
+.why{margin-top:6px;font-size:.88rem;color:var(--muted);border-right:3px solid var(--accent);padding-right:.6rem}
+
+.banner{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:.6rem 1.1rem;border-radius:10px;font-weight:600;box-shadow:var(--shadow);z-index:40;opacity:0;pointer-events:none;transition:opacity .25s;max-width:calc(100vw - 32px);text-align:center}
+.banner.show{opacity:1}
+.confirm{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;padding:.5rem .8rem;margin-top:8px}
+.install{display:none;gap:10px;align-items:center;flex-wrap:wrap;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px;padding:.6rem .9rem;margin-bottom:14px;font-size:.9rem}
+.install.show{display:flex}
+.install .spacer{flex:1}
+
+@media (max-width:820px){
+  body{font-size:16px}
+  .practice{grid-template-columns:1fr}
+  .rail{position:fixed;inset:0;z-index:30;border-radius:0;max-height:none;padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:none}
+  .rail.open{display:block}
+  .rail .railhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  #railToggle{display:inline-flex}
+  textarea.sql{font-size:16px;min-height:130px}
+  .toolbar.sticky{position:sticky;bottom:calc(6px + env(safe-area-inset-bottom,0px));background:var(--surface);padding:8px 0 2px;z-index:5}
+  .toolbar .kbd{display:none}
+  .clock{font-size:2rem}
+  .hstat .n{font-size:1.2rem}
+  .entry{grid-template-columns:auto 1fr}
+  .entry > div:last-child{grid-column:1 / -1;flex-direction:row!important;justify-content:space-between;align-items:center!important}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">MySQL בראש, SQLite במנוע · עובד גם בלי אינטרנט</div>
+      <h1>מאמן SQL</h1>
+      <p class="sub">אתה כותב את השאילתה, המנוע בודק מול התוצאה הצפויה. רמזים כן, פתרונות רק אחרי שלושה ניסיונות, והכל נרשם ביומן.</p>
+    </div>
+    <div class="headstats" id="headstats"></div>
+  </header>
+  <div class="install" id="installTip">
+    <span>באייפון: לחץ על כפתור השיתוף ב-Safari ואז <b>הוסף למסך הבית</b>. ככה זה נפתח כאפליקציה, גם בלי אינטרנט.</span>
+    <span class="spacer"></span>
+    <button class="small ghost" id="installClose" type="button">הבנתי</button>
+  </div>
+  <div class="progress" id="progress"></div>
+
+  <nav class="tabs" role="tablist" id="tabs">
+    <button role="tab" data-tab="practice" aria-selected="true">תרגול</button>
+    <button role="tab" data-tab="theory">תיאוריה</button>
+    <button role="tab" data-tab="session">סשן</button>
+    <button role="tab" data-tab="journal">יומן</button>
+    <button role="tab" data-tab="sandbox">חופשי</button>
+  </nav>
+
+  <!-- PRACTICE -->
+  <section class="panel practice" id="panel-practice">
+    <aside class="rail" id="rail">
+      <div class="railhead"><b>כל התרגילים</b><button class="small ghost" type="button" id="railClose">סגור</button></div>
+      <div class="filters" id="filters"></div>
+      <div class="exlist" id="exlist"></div>
+    </aside>
+    <div class="main">
+      <div class="card" id="qcard">
+        <div class="qhead" id="qhead"></div>
+        <p class="question" id="qtext"></p>
+        <p class="note" id="qnote" hidden></p>
+      </div>
+      <div class="card">
+        <textarea class="sql" id="editor" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" placeholder="SELECT ..."></textarea>
+        <div class="toolbar sticky">
+          <button class="primary" id="run">הרץ ובדוק <span class="kbd">Ctrl+Enter</span></button>
+          <button id="hintBtn">רמז</button>
+          <button id="solBtn" class="ghost" title="נפתח אחרי שלושה ניסיונות">פתרון</button>
+          <button id="clearBtn" class="ghost">נקה</button>
+          <span class="spacer"></span>
+          <button id="prevBtn" class="ghost small">הקודם</button>
+          <button id="nextBtn" class="ghost small">הבא</button>
+        </div>
+        <div class="hints" id="hints"></div>
+        <div class="solution" id="solution" hidden></div>
+      </div>
+      <div class="card" id="resultCard" hidden>
+        <div id="feedback"></div>
+        <div class="meta" id="resmeta"></div>
+        <div class="tablewrap" id="restable"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- THEORY -->
+  <section class="panel" id="panel-theory" hidden>
+    <h2 style="margin-bottom:8px">הסכמה</h2>
+    <p class="muted" style="margin-bottom:12px;max-width:75ch">ארבע טבלאות של מערך ציוד בדוי: ספקים, מוצרים, הזמנות והחזרות. יש בהן מלכודות מכוונות: ספק בלי הזמנות, מוצר שלא הוזמן, הזמנות בלי סכום, דירוג חסר, והזמנה אחת עם שתי החזרות.</p>
+    <div class="erd" id="erd"></div>
+    <div class="schema" id="schema"></div>
+    <h2 style="margin-bottom:8px">כרטיסי תיאוריה</h2>
+    <p class="muted" style="margin-bottom:12px;max-width:75ch">כל כרטיס: תחביר, כללים, דוגמאות שרצות על המנוע בלחיצה, ושלוש שאלות ידע. מספרי העמודים מפנים לקובץ ההרצאות של הקורס. הכרטיס האחרון מכסה מה שההרצאה לא מכסה ונדרש במבחן.</p>
+    <div id="theory"></div>
+  </section>
+
+  <!-- SESSION -->
+  <section class="panel" id="panel-session" hidden>
+    <div class="card" style="margin-bottom:14px">
+      <div class="eyebrow">בלוק פעיל</div>
+      <div id="activeSession"></div>
+    </div>
+    <div class="sessions" id="sessions"></div>
+  </section>
+
+  <!-- JOURNAL -->
+  <section class="panel" id="panel-journal" hidden>
+    <div class="stats" id="stats"></div>
+    <div class="topicstats" id="topicstats"></div>
+    <div class="toolbar" style="margin:0 0 12px">
+      <button id="exportBtn">העתק יומן כ-CSV</button>
+      <button id="exportJson" class="ghost">העתק גיבוי JSON</button>
+      <span class="spacer"></span>
+      <button id="resetBtn" class="ghost small">איפוס התקדמות ויומן</button>
+    </div>
+    <div id="resetConfirm" hidden></div>
+    <div class="journal" id="journal"></div>
+  </section>
+
+  <!-- SANDBOX -->
+  <section class="panel" id="panel-sandbox" hidden>
+    <div class="card">
+      <p class="muted" style="margin-bottom:10px">כל SELECT על ארבע הטבלאות. כאן אין בדיקה, רק הרצה. מתאים לבדוק רעיון לפני שמנסים בתרגיל.</p>
+      <textarea class="sql" id="sbEditor" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off">SELECT * FROM orders LIMIT 10;</textarea>
+      <div class="toolbar sticky">
+        <button class="primary" id="sbRun">הרץ <span class="kbd">Ctrl+Enter</span></button>
+        <span class="muted tiny">מוצגת התוצאה של השאילתה האחרונה.</span>
+      </div>
+    </div>
+    <div class="card" id="sbResultCard" hidden style="margin-top:14px">
+      <div class="meta" id="sbMeta"></div>
+      <div class="tablewrap" id="sbTable"></div>
+    </div>
+  </section>
+</div>
+<div class="banner" id="banner"></div>
+
+<script src="sql-asm.js"></script>
+<script>
+//<BANK>
+const DATA = {
+  suppliers: {
+    cols: ['supplier_id INTEGER PRIMARY KEY','supplier_name TEXT','region TEXT','rating INTEGER'],
+    rows: [
+      [1,'אלפא ציוד','מרכז',4],
+      [2,'בטא מוביליטי','צפון',3],
+      [3,'גמא רפואי','דרום',5],
+      [4,'דלתא שיקום','ירושלים',null],
+      [5,'הדס טכנולוגיות','מרכז',2]
+    ]
+  },
+  products: {
+    cols: ['product_id INTEGER PRIMARY KEY','product_name TEXT','category TEXT','list_price INTEGER'],
+    rows: [
+      [101,'כיסא גלגלים ידני','ניידות',1800],
+      [102,'כיסא גלגלים ממונע','ניידות',14500],
+      [103,'מיטה מתכווננת','שיקום',6200],
+      [104,'מנוף העברה','שיקום',7800],
+      [105,'כיסא רחצה ושירותים','רחצה',950],
+      [106,'הליכון','ניידות',420],
+      [107,'מזרן מונע פצעי לחץ','מניעה',2300],
+      [108,'כרית ישיבה','מניעה',640]
+    ]
+  },
+  orders: {
+    cols: ['order_id INTEGER PRIMARY KEY','order_date TEXT','supplier_id INTEGER','product_id INTEGER','condition TEXT','status TEXT','quantity INTEGER','amount INTEGER','district TEXT'],
+    rows: [
+      [1001,'2026-01-05',1,101,'מחודש','סופקה',1,900,'תל אביב'],
+      [1002,'2026-01-09',2,105,'חדש','סופקה',2,1900,'חיפה'],
+      [1003,'2026-01-14',3,103,'מחודש','סופקה',1,3100,'באר שבע'],
+      [1004,'2026-01-20',1,102,'חדש','סופקה',1,14500,'מרכז'],
+      [1005,'2026-01-27',4,104,'מחודש','סופקה',1,3900,'ירושלים'],
+      [1006,'2026-02-02',2,101,'מחודש','סופקה',3,2700,'חיפה'],
+      [1007,'2026-02-06',1,106,'חדש','סופקה',4,1680,'שרון'],
+      [1008,'2026-02-11',3,107,'חדש','סופקה',1,2300,'באר שבע'],
+      [1009,'2026-02-18',1,105,'מחודש','מבוטלת',1,null,'תל אביב'],
+      [1010,'2026-02-25',4,103,'חדש','סופקה',2,12400,'ירושלים'],
+      [1011,'2026-03-03',2,102,'מחודש','סופקה',1,7200,'חיפה'],
+      [1012,'2026-03-08',3,101,'חדש','סופקה',2,3600,'באר שבע'],
+      [1013,'2026-03-15',1,104,'חדש','סופקה',1,7800,'מרכז'],
+      [1014,'2026-03-21',2,105,'חדש','סופקה',1,950,'חיפה'],
+      [1015,'2026-03-29',1,101,'מחודש','סופקה',1,900,'תל אביב'],
+      [1016,'2026-04-04',3,103,'מחודש','סופקה',1,3100,'באר שבע'],
+      [1017,'2026-04-10',4,106,'חדש','סופקה',2,840,'ירושלים'],
+      [1018,'2026-04-16',1,107,'חדש','סופקה',1,2300,'שרון'],
+      [1019,'2026-04-22',2,101,'מחודש','מבוטלת',1,null,'חיפה'],
+      [1020,'2026-05-01',1,102,'חדש','סופקה',1,14500,'תל אביב'],
+      [1021,'2026-05-07',3,105,'מחודש','סופקה',2,950,'באר שבע'],
+      [1022,'2026-05-13',4,104,'מחודש','סופקה',1,3900,'ירושלים'],
+      [1023,'2026-05-20',2,103,'חדש','סופקה',1,6200,'חיפה'],
+      [1024,'2026-06-02',1,101,'מחודש','סופקה',2,1800,'מרכז'],
+      [1025,'2026-06-09',3,106,'חדש','סופקה',3,1260,'באר שבע'],
+      [1026,'2026-06-17',1,105,'חדש','סופקה',1,950,'שרון'],
+      [1027,'2026-07-01',2,107,'חדש','סופקה',1,2300,'חיפה'],
+      [1028,'2026-07-12',4,101,'חדש','סופקה',1,1800,'ירושלים'],
+      [1029,'2026-07-23',1,103,'מחודש','סופקה',1,3100,'תל אביב'],
+      [1030,'2026-08-04',3,102,'מחודש','ממתין למסמכים',1,7200,'באר שבע'],
+      [1031,'2026-08-15',1,104,'חדש','ממתין לאספקה',1,7800,'מרכז'],
+      [1032,'2026-09-01',2,105,'מחודש','ממתין לאספקה',2,null,'חיפה'],
+      [1033,'2026-09-10',4,103,'חדש','ממתין למסמכים',1,6200,'ירושלים'],
+      [1034,'2026-09-22',1,101,'מחודש','ממתין לאספקה',1,900,'שרון'],
+      [1035,'2026-10-05',3,107,'חדש','ממתין לאספקה',1,2300,'באר שבע'],
+      [1036,'2026-10-14',1,106,'חדש','ממתין לאספקה',2,null,'תל אביב']
+    ]
+  },
+  returns: {
+    cols: ['return_id INTEGER PRIMARY KEY','order_id INTEGER','return_date TEXT','status TEXT','days_to_close INTEGER'],
+    rows: [
+      [5001,1001,'2026-04-10','סופית',12],
+      [5002,1003,'2026-05-02','סופית',8],
+      [5003,1006,'2026-05-20','סופית',15],
+      [5004,1002,'2026-06-01','סופית',6],
+      [5005,1010,'2026-06-15','ממתין לחבילה',null],
+      [5006,1013,'2026-07-07','סופית',20],
+      [5007,1016,'2026-08-01','סופית',9],
+      [5008,1006,'2026-08-12','ממתין לחבילה',null],
+      [5009,1021,'2026-09-03','סופית',11],
+      [5010,1024,'2026-09-18','ממתין לחבילה',null],
+      [5011,1012,'2026-10-01','סופית',7],
+      [5012,1029,'2026-10-20','ממתין לחבילה',null]
+    ]
+  }
+};
+const TABLE_DESC = {
+  suppliers:'ספקי ציוד. חמישה ספקים, אחד בלי הזמנות ואחד בלי דירוג.',
+  products:'קטלוג מוצרים. שמונה פריטים בארבע קטגוריות, אחד מעולם לא הוזמן.',
+  orders:'הזמנות רכש 2026. condition הוא חדש או מחודש; amount חסר בחלק מההזמנות הפתוחות והמבוטלות.',
+  returns:'החזרות ציוד. סופית = סגורה, ממתין לחבילה = פתוחה (ואז days_to_close ריק). הזמנה 1006 הוחזרה פעמיים.'
+};
+
+const TOPICS = [
+  {key:'A', name:'בסיס', full:'SELECT / WHERE / ORDER BY', pages:'עמ׳ 6'},
+  {key:'B', name:'אגרגציה', full:'פונקציות אגרגציה ו-GROUP BY', pages:'עמ׳ 38–43'},
+  {key:'C', name:'HAVING', full:'סינון אחרי קיבוץ', pages:'עמ׳ 47–51'},
+  {key:'D', name:'DISTINCT', full:'DISTINCT ו-COUNT', pages:'עמ׳ 52'},
+  {key:'E', name:'UNION', full:'איחוד תוצאות', pages:'עמ׳ 53–54'},
+  {key:'F', name:'JOIN', full:'JOIN, LEFT JOIN ו-NULL', pages:'עמ׳ 70–72'},
+  {key:'G', name:'IN', full:'IN ותת-שאילתות', pages:'עמ׳ 93'},
+  {key:'H', name:'דוח משולב', full:'שאלות ראיון: כמה נושאים בשאילתה אחת', pages:'מעבר להרצאה'}
+];
+
+const EXERCISES = [
+  // A — basics
+  {id:'A1', topic:'A', level:1, q:'הצג את שם המוצר והמחיר של כל המוצרים בקטגוריה "ניידות".',
+   sql:"SELECT product_name, list_price FROM products WHERE category = 'ניידות'",
+   hints:['שתי עמודות מטבלת products, ותנאי אחד על category.','מחרוזות בתנאי עוטפים בגרשיים בודדים.']},
+  {id:'A2', topic:'A', level:1, ordered:true, q:'הזמנות בסטטוס "סופקה" שסכומן מעל 5000: מספר הזמנה וסכום, מהגדול לקטן.',
+   sql:"SELECT order_id, amount FROM orders WHERE status = 'סופקה' AND amount > 5000 ORDER BY amount DESC",
+   hints:['שני תנאים ב-WHERE מחוברים ב-AND.','מהגדול לקטן זה ORDER BY ... DESC.']},
+  {id:'A3', topic:'A', level:1, q:'מספר ההזמנה והתאריך של כל ההזמנות המחודשות במחוז "חיפה".',
+   sql:"SELECT order_id, order_date FROM orders WHERE district = 'חיפה' AND condition = 'מחודש'",
+   hints:['העמודה של חדש/מחודש נקראת condition.','שים לב שגם הזמנה מבוטלת היא הזמנה. לא ביקשו לסנן סטטוס.']},
+  {id:'A4', topic:'A', level:2, ordered:true, q:'שלוש ההזמנות היקרות ביותר: מספר הזמנה וסכום.',
+   sql:"SELECT order_id, amount FROM orders ORDER BY amount DESC LIMIT 3",
+   hints:['מיון יורד ואז LIMIT.','הזמנות בלי סכום (NULL) ממוינות אחרונות ב-DESC, אז הן לא מפריעות כאן. ב-MySQL ההתנהגות זהה.']},
+  {id:'A5', topic:'A', level:2, q:'כל ההזמנות שבוצעו במרץ 2026: מספר הזמנה ותאריך.',
+   sql:"SELECT order_id, order_date FROM orders WHERE order_date BETWEEN '2026-03-01' AND '2026-03-31'",
+   hints:['התאריכים שמורים כטקסט בפורמט YYYY-MM-DD, אז השוואת טקסט עובדת.','BETWEEN כולל את שני הקצוות. אפשר גם LIKE על תחילית.']},
+  {id:'A6', topic:'A', level:1, ordered:true, q:'מוצרים שמחירם בין 500 ל-2500 כולל: שם ומחיר, ממוינים לפי מחיר עולה.',
+   sql:"SELECT product_name, list_price FROM products WHERE list_price BETWEEN 500 AND 2500 ORDER BY list_price",
+   hints:['BETWEEN כולל את הקצוות. אם כתבת > ו-< בדוק שלא פספסת מוצר במחיר הגבול.']},
+  {id:'A7', topic:'A', level:1, q:'שמות המוצרים שהמילה "כיסא" מופיעה בשמם.',
+   sql:"SELECT product_name FROM products WHERE product_name LIKE '%כיסא%'",
+   hints:['LIKE עם % משני הצדדים.']},
+
+  // B — aggregation
+  {id:'B1', topic:'B', level:1, q:'כמה הזמנות יש בטבלת orders בסך הכל? (עמודה אחת, שורה אחת)',
+   sql:"SELECT COUNT(*) AS total_orders FROM orders",
+   hints:['COUNT(*) סופר שורות, כולל כאלה עם NULL.']},
+  {id:'B2', topic:'B', level:1, q:'מה סכום כל ההזמנות שסופקו? (עמודה אחת)',
+   sql:"SELECT SUM(amount) AS delivered_total FROM orders WHERE status = 'סופקה'",
+   hints:['סינון השורות ב-WHERE קורה לפני הסכימה.']},
+  {id:'B3', topic:'B', level:1, q:'מספר ההזמנות לכל סטטוס: הסטטוס והכמות.',
+   sql:"SELECT status, COUNT(*) AS cnt FROM orders GROUP BY status",
+   hints:['כל עמודה ב-SELECT שאינה אגרגציה חייבת להופיע ב-GROUP BY.']},
+  {id:'B4', topic:'B', level:2, q:'ממוצע סכום הזמנה לפי מצב הציוד (חדש / מחודש): המצב והממוצע.',
+   sql:"SELECT condition, AVG(amount) AS avg_amount FROM orders GROUP BY condition",
+   hints:['AVG מתעלם מ-NULL: המונה והמכנה שניהם בלי השורות החסרות.','אם ביקשת ROUND זה יתקבל. השאלה היא אם אתה יודע מה AVG עושה עם NULL בלי ROUND.']},
+  {id:'B5', topic:'B', level:2, q:'לכל ספק (לפי supplier_id, בלי JOIN): מספר ההזמנות וסכומן הכולל.',
+   sql:"SELECT supplier_id, COUNT(*) AS cnt, SUM(amount) AS total FROM orders GROUP BY supplier_id",
+   hints:['שלוש עמודות: מפתח הקיבוץ ושתי אגרגציות.','SUM מתעלם מ-NULL, אז הספק עם הזמנה בלי סכום עדיין מקבל סכום.']},
+  {id:'B6', topic:'B', level:1, q:'לכל מחוז: הסכום של ההזמנה הגדולה ביותר בו.',
+   sql:"SELECT district, MAX(amount) AS max_amount FROM orders GROUP BY district",
+   hints:['MAX לכל קבוצה.']},
+  {id:'B7', topic:'B', level:2, q:'מספר ההזמנות בכל חודש. הצג את החודש בפורמט YYYY-MM ואת הכמות. השתמש ב-SUBSTR על התאריך.',
+   sql:"SELECT SUBSTR(order_date, 1, 7) AS month, COUNT(*) AS cnt FROM orders GROUP BY SUBSTR(order_date, 1, 7)",
+   hints:['SUBSTR(order_date, 1, 7) נותן את שבעת התווים הראשונים. עובד זהה ב-MySQL.','ב-GROUP BY אפשר לחזור על הביטוי או להשתמש בכינוי (ב-MySQL מותר, ב-SQLite גם).']},
+  {id:'B8', topic:'B', level:2, q:'בשאילתה אחת: כמה הזמנות יש בסך הכל, ולכמה מהן יש סכום (amount לא ריק). שתי עמודות.',
+   sql:"SELECT COUNT(*) AS all_orders, COUNT(amount) AS with_amount FROM orders",
+   hints:['COUNT(*) מול COUNT(עמודה). ההבדל הוא בדיוק השורות עם NULL.']},
+
+  // C — HAVING
+  {id:'C1', topic:'C', level:1, q:'מזהי הספקים שיש להם לפחות 8 הזמנות, עם מספר ההזמנות.',
+   sql:"SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id HAVING COUNT(*) >= 8",
+   hints:['תנאי על תוצאת אגרגציה שייך ל-HAVING, לא ל-WHERE.','"לפחות 8" זה >= 8.']},
+  {id:'C2', topic:'C', level:2, q:'מחוזות שסכום ההזמנות שסופקו בהם עולה על 20000: המחוז והסכום.',
+   sql:"SELECT district, SUM(amount) AS total FROM orders WHERE status = 'סופקה' GROUP BY district HAVING SUM(amount) > 20000",
+   hints:['כאן יש גם WHERE וגם HAVING: הסטטוס מסנן שורות לפני הקיבוץ, הסכום מסנן קבוצות אחרי.','סדר הכתיבה: WHERE, GROUP BY, HAVING.']},
+  {id:'C3', topic:'C', level:1, q:'מזהי המוצרים שהוזמנו יותר מ-3 פעמים (שורות הזמנה, לא כמות יחידות), עם מספר הפעמים.',
+   sql:"SELECT product_id, COUNT(*) AS times FROM orders GROUP BY product_id HAVING COUNT(*) > 3",
+   hints:['סופרים שורות, לא SUM(quantity).']},
+  {id:'C4', topic:'C', level:2, q:'ספקים (supplier_id) שממוצע סכום ההזמנה שלהם גבוה מ-4000, עם הממוצע.',
+   sql:"SELECT supplier_id, AVG(amount) AS avg_amount FROM orders GROUP BY supplier_id HAVING AVG(amount) > 4000",
+   hints:['HAVING AVG(amount) > 4000.','זכור שהממוצע מחושב רק על הזמנות עם סכום.']},
+  {id:'C5', topic:'C', level:3, q:'אילו סטטוסים כוללים לפחות הזמנה אחת בלי סכום? הצג סטטוס ומספר ההזמנות בלי סכום באותו סטטוס.',
+   sql:"SELECT status, COUNT(*) - COUNT(amount) AS missing FROM orders GROUP BY status HAVING COUNT(*) - COUNT(amount) > 0",
+   hints:['ההפרש בין COUNT(*) ל-COUNT(amount) הוא מספר ה-NULL בקבוצה.','אפשר גם WHERE amount IS NULL ואז GROUP BY status. שתי הדרכים נכונות.']},
+
+  // D — DISTINCT
+  {id:'D1', topic:'D', level:1, q:'רשימת המחוזות השונים שמופיעים בהזמנות (כל מחוז פעם אחת).',
+   sql:"SELECT DISTINCT district FROM orders",
+   hints:['DISTINCT מיד אחרי SELECT.']},
+  {id:'D2', topic:'D', level:1, q:'כמה ספקים שונים קיבלו הזמנות? (מספר אחד)',
+   sql:"SELECT COUNT(DISTINCT supplier_id) AS suppliers_with_orders FROM orders",
+   hints:['COUNT(DISTINCT ...).','התשובה קטנה ממספר הספקים בטבלת suppliers. למה?']},
+  {id:'D3', topic:'D', level:2, q:'בשאילתה אחת על returns: מספר ההחזרות הכולל, ומספר ההזמנות השונות שהוחזרו. שתי עמודות.',
+   sql:"SELECT COUNT(*) AS returns_total, COUNT(DISTINCT order_id) AS distinct_orders FROM returns",
+   hints:['אם שני המספרים שווים אצלך, פספסת את ההזמנה שהוחזרה פעמיים.']},
+  {id:'D4', topic:'D', level:1, q:'כל הצירופים הייחודיים של ספק (supplier_id) ומצב ציוד (condition) שמופיעים בהזמנות.',
+   sql:"SELECT DISTINCT supplier_id, condition FROM orders",
+   hints:['DISTINCT חל על כל צירוף העמודות שאחריו, לא רק על הראשונה.']},
+
+  // E — UNION
+  {id:'E1', topic:'E', level:2, q:'עמודה אחת עם כל התאריכים שבהם הייתה פעילות: תאריכי הזמנה ותאריכי החזרה, בלי כפילויות.',
+   sql:"SELECT order_date AS activity_date FROM orders UNION SELECT return_date FROM returns",
+   hints:['שתי שאילתות SELECT עם מספר עמודות זהה, ביניהן UNION.','UNION (בלי ALL) כבר מסיר כפילויות.']},
+  {id:'E2', topic:'E', level:2, q:'רשימה אחת של פריטים פתוחים: מזהה וסוג. הזמנות בסטטוס "ממתין לאספקה" או "ממתין למסמכים" עם הסוג "הזמנה", והחזרות בסטטוס "ממתין לחבילה" עם הסוג "החזרה".',
+   sql:"SELECT order_id AS id, 'הזמנה' AS kind FROM orders WHERE status IN ('ממתין לאספקה','ממתין למסמכים') UNION ALL SELECT return_id, 'החזרה' FROM returns WHERE status = 'ממתין לחבילה'",
+   hints:['עמודת קבוע: כותבים מחרוזת ישירות ב-SELECT, למשל \'הזמנה\' AS kind.','שמות העמודות נקבעים לפי ה-SELECT הראשון.']},
+  {id:'E3', topic:'E', level:1, ordered:true, q:'עמודה אחת בשם name עם כל שמות הספקים וכל שמות המוצרים, ממוינת לפי א-ב.',
+   sql:"SELECT supplier_name AS name FROM suppliers UNION SELECT product_name FROM products ORDER BY name",
+   hints:['ORDER BY אחד בסוף, על שם העמודה מה-SELECT הראשון.']},
+
+  // F — JOIN
+  {id:'F1', topic:'F', level:1, q:'מספר ההזמנה ושם הספק לכל הזמנה.',
+   sql:"SELECT o.order_id, s.supplier_name FROM orders o JOIN suppliers s ON o.supplier_id = s.supplier_id",
+   hints:['JOIN ... ON עם עמודת המפתח המשותפת.','תן לטבלאות כינויים קצרים, זה חוסך הקלדה ושגיאות.']},
+  {id:'F2', topic:'F', level:2, q:'לכל ספק, כולל ספקים בלי הזמנות: שם הספק ומספר ההזמנות שלו (0 למי שאין).',
+   sql:"SELECT s.supplier_name, COUNT(o.order_id) AS cnt FROM suppliers s LEFT JOIN orders o ON s.supplier_id = o.supplier_id GROUP BY s.supplier_id, s.supplier_name",
+   hints:['LEFT JOIN מטבלת הספקים כדי לא לאבד ספק בלי הזמנות.','COUNT(*) ייתן 1 לספק בלי הזמנות, כי יש לו שורה אחת עם NULL. ספור עמודה מטבלת ההזמנות.']},
+  {id:'F3', topic:'F', level:2, q:'שמות הספקים שאין להם אף הזמנה.',
+   sql:"SELECT s.supplier_name FROM suppliers s LEFT JOIN orders o ON s.supplier_id = o.supplier_id WHERE o.order_id IS NULL",
+   hints:['LEFT JOIN ואז תנאי IS NULL על עמודה מהטבלה שיכולה להיות ריקה (ההזמנות).','= NULL לא עובד אף פעם. רק IS NULL.']},
+  {id:'F4', topic:'F', level:2, q:'שמות המוצרים שמעולם לא הוזמנו (באמצעות LEFT JOIN).',
+   sql:"SELECT p.product_name FROM products p LEFT JOIN orders o ON p.product_id = o.product_id WHERE o.order_id IS NULL",
+   hints:['אותו דפוס כמו ספקים בלי הזמנות, רק מטבלת המוצרים.']},
+  {id:'F5', topic:'F', level:1, q:'מספר ההזמנה והסטטוס של כל ההזמנות שאין להן סכום.',
+   sql:"SELECT order_id, status FROM orders WHERE amount IS NULL",
+   hints:['IS NULL. לא = NULL, לא = \'\'.']},
+  {id:'F6', topic:'F', level:2, q:'סכום ההזמנות שסופקו לכל קטגוריית מוצר: הקטגוריה והסכום.',
+   sql:"SELECT p.category, SUM(o.amount) AS total FROM orders o JOIN products p ON o.product_id = p.product_id WHERE o.status = 'סופקה' GROUP BY p.category",
+   hints:['JOIN למוצרים, WHERE על הסטטוס, GROUP BY על הקטגוריה.','קטגוריה בלי הזמנות לא תופיע. זה בסדר, לא ביקשו אותה.']},
+  {id:'F7', topic:'F', level:3, q:'כל ההחזרות הפתוחות (ממתין לחבילה): מספר ההזמנה, שם הספק ותאריך ההחזרה.',
+   sql:"SELECT o.order_id, s.supplier_name, r.return_date FROM returns r JOIN orders o ON r.order_id = o.order_id JOIN suppliers s ON o.supplier_id = s.supplier_id WHERE r.status = 'ממתין לחבילה'",
+   hints:['שלוש טבלאות: returns אל orders, ואז orders אל suppliers.','כל JOIN מקבל ON משלו.']},
+  {id:'F8', topic:'F', level:3, q:'מספרי ההזמנות שסופקו ומעולם לא הוחזרו.',
+   sql:"SELECT o.order_id FROM orders o LEFT JOIN returns r ON o.order_id = r.order_id WHERE o.status = 'סופקה' AND r.return_id IS NULL",
+   hints:['LEFT JOIN להחזרות, ואז IS NULL על עמודה מההחזרות.','תנאי על הטבלה השמאלית (הסטטוס) יכול להישאר ב-WHERE. תנאי על הטבלה הימנית ב-WHERE הופך את ה-LEFT JOIN ל-INNER, חוץ מ-IS NULL.']},
+  {id:'F9', topic:'F', level:1, q:'שמות הספקים שהדירוג שלהם לא ידוע.',
+   sql:"SELECT supplier_name FROM suppliers WHERE rating IS NULL",
+   hints:['לא ידוע = NULL.']},
+
+  // G — IN
+  {id:'G1', topic:'G', level:2, q:'מספרי ההזמנות ומזהי המוצרים של הזמנות למוצרים מקטגוריה "שיקום". בלי JOIN, עם תת-שאילתה ב-IN.',
+   sql:"SELECT order_id, product_id FROM orders WHERE product_id IN (SELECT product_id FROM products WHERE category = 'שיקום')",
+   hints:['התת-שאילתה מחזירה עמודה אחת: מזהי המוצרים בקטגוריה.','הסוגריים חובה.']},
+  {id:'G2', topic:'G', level:3, q:'שמות הספקים שלפחות אחת מההזמנות שלהם הוחזרה. השתמש ב-IN מקונן (שתי רמות), בלי JOIN.',
+   sql:"SELECT supplier_name FROM suppliers WHERE supplier_id IN (SELECT supplier_id FROM orders WHERE order_id IN (SELECT order_id FROM returns))",
+   hints:['מבפנים החוצה: אילו הזמנות הוחזרו, אילו ספקים מופיעים בהן, ואז השמות.','אם קיבלת ספק פעמיים, אתה לא משתמש ב-IN אלא ב-JOIN.']},
+  {id:'G3', topic:'G', level:2, q:'מספרי ההזמנות הפתוחות (לא "סופקה" ולא "מבוטלת") במחוזות "חיפה" ו"ירושלים", עם המחוז.',
+   sql:"SELECT order_id, district FROM orders WHERE district IN ('חיפה','ירושלים') AND status NOT IN ('סופקה','מבוטלת')",
+   hints:['IN עם רשימת ערכים, ו-NOT IN עם רשימה אחרת.']},
+  {id:'G4', topic:'G', level:2, q:'שמות המוצרים שמעולם לא הוזמנו, הפעם עם NOT IN ותת-שאילתה.',
+   sql:"SELECT product_name FROM products WHERE product_id NOT IN (SELECT product_id FROM orders)",
+   hints:['NOT IN (SELECT product_id FROM orders).','שאלת ראיון קלאסית: מה קורה ל-NOT IN אם התת-שאילתה מחזירה NULL? (כאן היא לא, אבל תדע לענות.)']},
+
+  // H — combined reports
+  {id:'H1', topic:'H', level:3, q:'דוח ספקים: לכל ספק שיש לו הזמנות, שם הספק, מספר ההזמנות החדשות, מספר ההזמנות המחודשות וסך ההזמנות. ארבע עמודות.',
+   sql:"SELECT s.supplier_name, SUM(CASE WHEN o.condition = 'חדש' THEN 1 ELSE 0 END) AS new_orders, SUM(CASE WHEN o.condition = 'מחודש' THEN 1 ELSE 0 END) AS refurb_orders, COUNT(*) AS total FROM orders o JOIN suppliers s ON o.supplier_id = s.supplier_id GROUP BY s.supplier_id, s.supplier_name",
+   hints:['ספירה מותנית: SUM(CASE WHEN תנאי THEN 1 ELSE 0 END).','זה מה שדוח ספקים טיפוסי עושה באקסל עם נוסחאות IF, רק בשורה אחת.'],
+   note:'CASE לא בחומר ההרצאה, אבל זו שאלת ראיון נפוצה ומבנה דוח נפוץ בתפעול.'},
+  {id:'H2', topic:'H', level:3, q:'לכל מחוז: מספר ההזמנות שסופקו ומספר ההחזרות הסגורות ("סופית") על הזמנות אלה. מחוז בלי החזרות סגורות צריך להופיע עם 0.',
+   sql:"SELECT o.district, COUNT(DISTINCT o.order_id) AS delivered, COUNT(r.return_id) AS closed_returns FROM orders o LEFT JOIN returns r ON o.order_id = r.order_id AND r.status = 'סופית' WHERE o.status = 'סופקה' GROUP BY o.district",
+   hints:['LEFT JOIN מהזמנות להחזרות. התנאי על סטטוס ההחזרה צריך להיות ב-ON, לא ב-WHERE, אחרת מחוזות בלי החזרות סגורות ייעלמו.','הזמנה עם שתי החזרות תוכפל. ספור COUNT(DISTINCT o.order_id) לצד ההזמנות שסופקו.'],
+   note:'המלכודת הקלאסית של LEFT JOIN: איפה שמים את התנאי על הטבלה הימנית.'},
+  {id:'H3', topic:'H', level:2, ordered:true, q:'החודש (YYYY-MM) עם הסכום הגבוה ביותר של הזמנות שסופקו, והסכום. שורה אחת.',
+   sql:"SELECT SUBSTR(order_date,1,7) AS month, SUM(amount) AS total FROM orders WHERE status = 'סופקה' GROUP BY SUBSTR(order_date,1,7) ORDER BY total DESC LIMIT 1",
+   hints:['קיבוץ לפי חודש, מיון לפי הסכום בסדר יורד, LIMIT 1.']},
+  {id:'H4', topic:'H', level:3, ordered:true, q:'SLA החזרות: לכל ספק עם לפחות 2 החזרות סגורות, שם הספק, מספר ההחזרות הסגורות וממוצע הימים לסגירה. מהמהיר לאיטי.',
+   sql:"SELECT s.supplier_name, COUNT(*) AS closed, AVG(r.days_to_close) AS avg_days FROM returns r JOIN orders o ON r.order_id = o.order_id JOIN suppliers s ON o.supplier_id = s.supplier_id WHERE r.status = 'סופית' GROUP BY s.supplier_id, s.supplier_name HAVING COUNT(*) >= 2 ORDER BY avg_days",
+   hints:['שלוש טבלאות, WHERE על סטטוס ההחזרה, GROUP BY ספק, HAVING על הספירה, ORDER BY על הממוצע.','זה כל הסילבוס בשאילתה אחת. אם היא יוצאת לך נקי, אתה מוכן לשאלת ה-SQL בראיון.']}
+];
+
+const THEORY = [
+  {topic:'A', title:'SELECT, WHERE, ORDER BY, LIMIT', pages:'עמ׳ 6', html:`
+<pre>SELECT col1, col2
+FROM table
+WHERE condition
+ORDER BY col1 [ASC|DESC]
+LIMIT n;</pre>
+<ul>
+<li>טקסט בגרשיים בודדים. מספרים בלי גרשיים.</li>
+<li>AND קודם ל-OR. כשמערבבים, סוגריים.</li>
+<li>BETWEEN a AND b כולל את הקצוות. LIKE: % כל רצף, _ תו אחד.</li>
+<li>ORDER BY ברירת מחדל עולה. אפשר למיין לפי כינוי (alias).</li>
+</ul>
+<p><b>טעות נפוצה:</b> תנאי על טקסט בלי גרשיים, או <code>x = 1 OR 2</code> במקום <code>x IN (1, 2)</code>.</p>`,
+   examples:[
+     {label:'סינון, מיון יורד ו-LIMIT', sql:"SELECT product_name, list_price FROM products WHERE list_price > 2000 ORDER BY list_price DESC LIMIT 3"},
+     {label:'LIKE על תחילית מול הכלה', sql:"SELECT product_name FROM products WHERE product_name LIKE 'כיסא%'"}
+   ],
+   quiz:[
+     {q:'איזו שאילתה מחזירה את המוצרים שמחירם בדיוק 950 או 1800?', a:'WHERE list_price IN (950, 1800)', o:['WHERE list_price = 950 OR 1800','WHERE list_price = 950 AND list_price = 1800','WHERE list_price BETWEEN 950 OR 1800'], why:'OR מחבר שני תנאים שלמים, לא שני ערכים. "= 950 OR 1800" מתפרש כ-"(= 950) OR (1800)" והתנאי השני תמיד אמת.'},
+     {q:"מה מחזיר WHERE product_name LIKE 'כיסא%'?", a:'שמות שמתחילים ב"כיסא"', o:['שמות שמכילים "כיסא" בכל מקום','שמות שמסתיימים ב"כיסא"','שמות באורך ארבעה תווים'], why:'% בסוף בלבד: כל מה שמתחיל ב"כיסא". להכלה צריך % משני הצדדים.'},
+     {q:'ORDER BY amount DESC LIMIT 1, כשחלק מהערכים NULL, מחזיר:', a:'השורה עם הסכום הגבוה ביותר', o:['שורה עם NULL','שורה אקראית','שגיאה, כי אין GROUP BY'], why:'ב-MySQL וב-SQLite NULL נחשב הקטן ביותר, ולכן במיון יורד הוא אחרון.'}
+   ]},
+  {topic:'B', title:'אגרגציה ו-GROUP BY', pages:'עמ׳ 38–43', html:`
+<pre>SELECT key_col, COUNT(*), SUM(x), AVG(x), MIN(x), MAX(x)
+FROM table
+WHERE row_filter
+GROUP BY key_col;</pre>
+<ul>
+<li>WHERE מסנן <b>שורות לפני</b> הקיבוץ. לא ניתן לשים בו אגרגציה.</li>
+<li>COUNT(*) סופר שורות. COUNT(col) סופר ערכים שאינם NULL.</li>
+<li>SUM, AVG, MIN, MAX מתעלמים מ-NULL. לכן AVG(x) = SUM(x) / COUNT(x), <b>לא</b> / COUNT(*).</li>
+<li>אגרגציה על קבוצה ריקה: COUNT נותן 0, השאר NULL.</li>
+<li>כל עמודה ב-SELECT שאינה אגרגציה חייבת להיות ב-GROUP BY (MySQL אוכף, SQLite לא).</li>
+</ul>`,
+   examples:[
+     {label:'COUNT(*) מול COUNT(col) מול AVG, על טבלה עם NULL', sql:"SELECT COUNT(*) AS rows_all, COUNT(amount) AS rows_with_amount, SUM(amount) AS total, AVG(amount) AS avg_amount, SUM(amount) * 1.0 / COUNT(*) AS avg_if_nulls_counted FROM orders"},
+     {label:'קיבוץ לפי מצב ציוד', sql:"SELECT condition, COUNT(*) AS cnt, SUM(amount) AS total FROM orders GROUP BY condition"}
+   ],
+   quiz:[
+     {q:'בטבלה עם 10 שורות, שב-3 מהן amount הוא NULL. מה מחזיר COUNT(amount)?', a:'7', o:['10','3','NULL'], why:'COUNT(עמודה) סופר רק ערכים שאינם NULL.'},
+     {q:'באותה טבלה, AVG(amount) מחושב כ:', a:'SUM(amount) חלקי 7', o:['SUM(amount) חלקי 10','SUM(amount) חלקי 3','שגיאה בגלל ה-NULL'], why:'AVG מתעלם מ-NULL גם במונה וגם במכנה.'},
+     {q:'SELECT status, district, COUNT(*) FROM orders GROUP BY status. מה קורה ב-MySQL?', a:'שגיאה: district לא ב-GROUP BY ולא באגרגציה', o:['עובד ומחזיר מחוז אקראי לכל סטטוס','עובד ומחזיר את כל המחוזות','מחזיר שורה אחת'], why:'ONLY_FULL_GROUP_BY. SQLite היה מריץ ומחזיר מחוז שרירותי, וזה בדיוק למה המאמן מזהיר.'}
+   ]},
+  {topic:'C', title:'HAVING', pages:'עמ׳ 47–51', html:`
+<pre>SELECT key_col, COUNT(*) AS cnt
+FROM table
+WHERE row_filter
+GROUP BY key_col
+HAVING COUNT(*) > 5;</pre>
+<ul>
+<li>HAVING מסנן <b>קבוצות אחרי</b> הקיבוץ. כאן כן מותר אגרגציה.</li>
+<li>כלל אצבע: אם התנאי מדבר על שורה בודדת, WHERE. אם על תוצאה של ספירה/סכום, HAVING.</li>
+<li>אפשר גם WHERE וגם HAVING באותה שאילתה, בסדר הזה.</li>
+</ul>`,
+   examples:[
+     {label:'WHERE ואז HAVING באותה שאילתה', sql:"SELECT district, COUNT(*) AS delivered, SUM(amount) AS total FROM orders WHERE status = 'סופקה' GROUP BY district HAVING SUM(amount) > 20000"},
+     {label:'HAVING על ספירה', sql:"SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id HAVING COUNT(*) >= 8"}
+   ],
+   quiz:[
+     {q:'"ספקים עם יותר מ-5 הזמנות". איפה התנאי?', a:'HAVING COUNT(*) > 5', o:['WHERE COUNT(*) > 5','WHERE orders > 5','ORDER BY COUNT(*) > 5'], why:'תנאי על תוצאת אגרגציה חייב להיות אחרי הקיבוץ, כלומר ב-HAVING.'},
+     {q:'סדר הכתיבה הנכון:', a:'WHERE, GROUP BY, HAVING', o:['GROUP BY, WHERE, HAVING','HAVING, GROUP BY, WHERE','WHERE, HAVING, GROUP BY'], why:'וזה גם סדר הביצוע: סינון שורות, קיבוץ, סינון קבוצות.'},
+     {q:"WHERE status = 'סופקה' ... HAVING SUM(amount) > 20000. מה כל אחד עושה?", a:'WHERE מסנן שורות לפני הקיבוץ, HAVING מסנן קבוצות אחריו', o:['שניהם מסננים שורות','שניהם מסננים קבוצות','HAVING רץ לפני WHERE'], why:'ולכן הסכום ב-HAVING מחושב רק על ההזמנות שסופקו.'}
+   ]},
+  {topic:'D', title:'DISTINCT ו-COUNT', pages:'עמ׳ 52', html:`
+<pre>SELECT DISTINCT col1, col2 FROM t;
+SELECT COUNT(DISTINCT col) FROM t;</pre>
+<ul>
+<li>DISTINCT חל על <b>כל</b> צירוף העמודות שאחריו.</li>
+<li>COUNT(DISTINCT col) מתעלם מ-NULL כמו COUNT(col).</li>
+<li>DISTINCT מופעל אחרי SELECT ולפני ORDER BY.</li>
+</ul>`,
+   examples:[
+     {label:'החזרות מול הזמנות שהוחזרו (הזמנה 1006 הוחזרה פעמיים)', sql:"SELECT COUNT(*) AS returns_total, COUNT(DISTINCT order_id) AS distinct_orders FROM returns"},
+     {label:'DISTINCT על צירוף עמודות', sql:"SELECT DISTINCT supplier_id, condition FROM orders ORDER BY supplier_id, condition"}
+   ],
+   quiz:[
+     {q:'SELECT DISTINCT supplier_id, condition FROM orders מסיר כפילויות של:', a:'הצירוף של שתי העמודות יחד', o:['supplier_id בלבד','condition בלבד','אף עמודה, DISTINCT עובד רק על עמודה אחת'], why:'שורה נחשבת כפולה רק אם כל העמודות שאחרי DISTINCT זהות.'},
+     {q:'ב-returns יש 12 החזרות, והזמנה אחת הוחזרה פעמיים. COUNT(DISTINCT order_id) מחזיר:', a:'11', o:['12','13','1'], why:'12 החזרות, אבל רק 11 הזמנות שונות.'},
+     {q:'DISTINCT מופעל:', a:'אחרי SELECT ולפני ORDER BY', o:['לפני WHERE','אחרי LIMIT','לפני FROM'], why:'סדר הביצוע: ... SELECT, DISTINCT, ORDER BY, LIMIT.'}
+   ]},
+  {topic:'E', title:'UNION', pages:'עמ׳ 53–54', html:`
+<pre>SELECT a, b FROM t1
+UNION [ALL]
+SELECT c, d FROM t2
+ORDER BY a;</pre>
+<ul>
+<li>אותו מספר עמודות, טיפוסים תואמים. שמות העמודות מה-SELECT הראשון.</li>
+<li>UNION מסיר כפילויות (ולכן איטי יותר). UNION ALL משאיר הכל.</li>
+<li>ORDER BY אחד בלבד, בסוף, על כל התוצאה.</li>
+</ul>`,
+   examples:[
+     {label:'UNION מול UNION ALL על אותם נתונים', sql:"SELECT 'UNION' AS kind, COUNT(*) AS rows_count FROM (SELECT district FROM orders UNION SELECT region FROM suppliers) UNION ALL SELECT 'UNION ALL', COUNT(*) FROM (SELECT district FROM orders UNION ALL SELECT region FROM suppliers)"},
+     {label:'רשימה אחת עם עמודת סוג', sql:"SELECT order_id AS id, 'הזמנה' AS kind FROM orders WHERE status = 'ממתין לאספקה' UNION ALL SELECT return_id, 'החזרה' FROM returns WHERE status = 'ממתין לחבילה'"}
+   ],
+   quiz:[
+     {q:'ההבדל בין UNION ל-UNION ALL:', a:'UNION מסיר כפילויות, UNION ALL משאיר הכל', o:['UNION ALL מסיר כפילויות, UNION משאיר','אין הבדל','UNION ALL מאחד עמודות ולא שורות'], why:'ולכן UNION ALL מהיר יותר. אם אין כפילויות אפשריות, העדף אותו.'},
+     {q:'מה חובה ב-UNION?', a:'אותו מספר עמודות בשני ה-SELECT', o:['אותם שמות עמודות','אותה טבלה בשני הצדדים','ORDER BY בכל SELECT'], why:'השמות נלקחים מה-SELECT הראשון. הטבלאות יכולות להיות שונות לגמרי.'},
+     {q:'ORDER BY בשאילתת UNION:', a:'אחד בלבד, בסוף, על כל התוצאה', o:['בכל SELECT בנפרד','אסור בכלל','מותר רק יחד עם LIMIT'], why:'המיון חל על התוצאה המאוחדת.'}
+   ]},
+  {topic:'F', title:'JOIN, LEFT JOIN ו-NULL', pages:'עמ׳ 70–72', html:`
+<pre>SELECT a.x, b.y
+FROM a
+LEFT JOIN b ON a.id = b.a_id
+WHERE b.a_id IS NULL;   -- "a בלי b"</pre>
+<ul>
+<li>INNER JOIN: רק שורות שיש להן התאמה בשני הצדדים.</li>
+<li>LEFT JOIN: כל השורות מהטבלה השמאלית (הראשונה), ו-NULL איפה שאין התאמה.</li>
+<li>תנאי על הטבלה הימנית ב-<b>WHERE</b> מבטל את ה-LEFT (חוץ מ-IS NULL). אם רוצים לשמור את כל השמאל, התנאי הולך ל-<b>ON</b>.</li>
+<li>NULL לא שווה לכלום, גם לא ל-NULL. רק IS NULL / IS NOT NULL.</li>
+<li>JOIN של יחס 1:N מכפיל שורות. לפני COUNT או SUM תשאל: האם משהו הוכפל?</li>
+</ul>`,
+   examples:[
+     {label:'LEFT JOIN שומר ספק בלי הזמנות; COUNT(*) מול COUNT(col)', sql:"SELECT s.supplier_name, COUNT(*) AS count_star, COUNT(o.order_id) AS count_orders FROM suppliers s LEFT JOIN orders o ON s.supplier_id = o.supplier_id GROUP BY s.supplier_id, s.supplier_name"},
+     {label:'תנאי ב-ON מול תנאי ב-WHERE אחרי LEFT JOIN', sql:"SELECT 'ON' AS where_filter, COUNT(DISTINCT o.district) AS districts FROM orders o LEFT JOIN returns r ON o.order_id = r.order_id AND r.status = 'סופית' UNION ALL SELECT 'WHERE', COUNT(DISTINCT o.district) FROM orders o LEFT JOIN returns r ON o.order_id = r.order_id WHERE r.status = 'סופית'"}
+   ],
+   quiz:[
+     {q:'LEFT JOIN מספקים להזמנות. ספק בלי הזמנות:', a:'מופיע, עם NULL בעמודות ההזמנות', o:['לא מופיע','מופיע פעמיים','גורם לשגיאה'], why:'זה כל הרעיון של LEFT: הטבלה השמאלית נשמרת במלואה.'},
+     {q:'הדרך הנכונה למצוא ספקים בלי הזמנות:', a:'LEFT JOIN ... WHERE o.order_id IS NULL', o:['INNER JOIN ... WHERE o.order_id IS NULL','LEFT JOIN ... WHERE o.order_id = NULL','JOIN ... HAVING NULL'], why:'INNER JOIN משמיט אותם מראש, ו-= NULL לעולם לא אמת.'},
+     {q:"אחרי LEFT JOIN returns, שמים r.status = 'סופית' ב-WHERE. התוצאה:", a:'שורות בלי החזרה נעלמות, ה-LEFT מתבטל בפועל', o:['לא משנה כלום','השורות מוכפלות','שגיאת תחביר'], why:'ל-NULL אין סטטוס, אז התנאי נכשל עליו. כדי לשמור אותן, התנאי עובר ל-ON.'}
+   ]},
+  {topic:'G', title:'IN ותת-שאילתות', pages:'עמ׳ 93', html:`
+<pre>SELECT * FROM t
+WHERE col IN ('a', 'b');
+
+SELECT * FROM t
+WHERE col IN (SELECT col FROM other WHERE ...);</pre>
+<ul>
+<li>התת-שאילתה ב-IN מחזירה עמודה אחת.</li>
+<li>IN לא מכפיל שורות (בניגוד ל-JOIN), ולכן נוח כשצריך רק לסנן.</li>
+<li><b>מלכודת:</b> NOT IN עם NULL בתת-שאילתה מחזיר תמיד כלום. ב-NOT IN תמיד לסנן IS NOT NULL בפנים.</li>
+</ul>`,
+   examples:[
+     {label:'IN עם תת-שאילתה', sql:"SELECT order_id, product_id FROM orders WHERE product_id IN (SELECT product_id FROM products WHERE category = 'שיקום')"},
+     {label:'מלכודת NOT IN עם NULL: אותה שאלה, פעם בלי NULL ופעם עם', sql:"SELECT 'בלי NULL' AS case_name, COUNT(*) AS products_never_ordered FROM products WHERE product_id NOT IN (SELECT product_id FROM orders) UNION ALL SELECT 'עם NULL', COUNT(*) FROM products WHERE product_id NOT IN (SELECT product_id FROM orders UNION ALL SELECT NULL)"}
+   ],
+   quiz:[
+     {q:'WHERE x NOT IN (SELECT y ...), וה-SELECT מחזיר גם NULL. התוצאה:', a:'אפס שורות', o:['מתעלם מה-NULL','שגיאה','כל השורות'], why:'x <> NULL הוא לא-ידוע, ולכן כל התנאי לא-ידוע ושום שורה לא עוברת.'},
+     {q:'תת-שאילתה בתוך IN חייבת להחזיר:', a:'עמודה אחת', o:['שורה אחת','שתי עמודות','טבלה שלמה'], why:'IN משווה ערך לרשימת ערכים. שורות יכולות להיות רבות, עמודה אחת.'},
+     {q:'יתרון של IN על JOIN כשרק מסננים:', a:'IN לא מכפיל שורות', o:['IN תמיד מהיר יותר','IN מאפשר להציג עמודות משתי הטבלאות','IN תומך ב-GROUP BY ו-JOIN לא'], why:'JOIN ליחס 1:N מכפיל, ואז צריך DISTINCT. IN רק בודק שייכות.'}
+   ]},
+  {topic:'X', title:'מה שההרצאה לא מכסה (ונדרש)', pages:'השלמה', html:`
+<p><b>1. סדר הביצוע הלוגי</b> (לא סדר הכתיבה):</p>
+<pre>FROM → JOIN/ON → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → LIMIT</pre>
+<p>מכאן נגזר: WHERE לא מכיר כינויים מה-SELECT, ORDER BY כן. HAVING רואה אגרגציות, WHERE לא.</p>
+<p><b>2. ONLY_FULL_GROUP_BY (MySQL):</b> כל עמודה ב-SELECT שאינה בתוך פונקציית אגרגציה חייבת להופיע ב-GROUP BY. SQLite סלחן ויריץ את זה בשקט, ולכן המאמן מזהיר אותך כשזה קורה. בראיון ובמבחן זה שגיאה.</p>
+<p><b>3. NULL באגרגציות:</b></p>
+<table class="diff">
+<tr><th>ביטוי</th><th>מה קורה עם NULL</th></tr>
+<tr><td><code>COUNT(*)</code></td><td>סופר את השורה</td></tr>
+<tr><td><code>COUNT(col)</code></td><td>מדלג</td></tr>
+<tr><td><code>SUM / AVG / MIN / MAX</code></td><td>מדלגים. AVG מחלק רק במספר הערכים הקיימים</td></tr>
+<tr><td><code>col = NULL</code></td><td>תמיד לא-ידוע, השורה לא עוברת. צריך IS NULL</td></tr>
+<tr><td><code>NOT IN (... NULL ...)</code></td><td>מחזיר ריק</td></tr>
+</table>
+<p><b>4. SQLite מול MySQL, מה שרלוונטי:</b></p>
+<table class="diff">
+<tr><th>נושא</th><th>MySQL</th><th>SQLite (כאן)</th></tr>
+<tr><td>שרשור טקסט</td><td><code>CONCAT(a, b)</code></td><td><code>a || b</code></td></tr>
+<tr><td>חודש מתאריך</td><td><code>DATE_FORMAT(d, '%Y-%m')</code> / <code>MONTH(d)</code></td><td><code>strftime('%Y-%m', d)</code></td></tr>
+<tr><td>נייטרלי לשניהם</td><td colspan="2"><code>SUBSTR(d, 1, 7)</code>, <code>IFNULL(x, 0)</code>, <code>CASE WHEN</code>, <code>LIMIT</code></td></tr>
+<tr><td>GROUP BY חלקי</td><td>שגיאה</td><td>עובר בשקט</td></tr>
+</table>`,
+   examples:[
+     {label:'IFNULL מחליף NULL בערך, ואז הממוצע משתנה', sql:"SELECT AVG(amount) AS avg_ignoring_null, AVG(IFNULL(amount, 0)) AS avg_null_as_zero FROM orders"},
+     {label:'CASE WHEN לספירה מותנית (מבנה דוח ספקים)', sql:"SELECT s.supplier_name, SUM(CASE WHEN o.condition = 'חדש' THEN 1 ELSE 0 END) AS new_orders, SUM(CASE WHEN o.condition = 'מחודש' THEN 1 ELSE 0 END) AS refurb_orders FROM orders o JOIN suppliers s ON o.supplier_id = s.supplier_id GROUP BY s.supplier_id, s.supplier_name"}
+   ],
+   quiz:[
+     {q:'SELECT status, SUM(amount) AS total FROM orders WHERE total > 100 GROUP BY status נכשל ב-MySQL. למה?', a:'WHERE מבוצע לפני SELECT, אז הכינוי total עוד לא קיים', o:['כינויים אסורים בכלל','total היא מילה שמורה','חובה HAVING בכל שאילתה עם GROUP BY'], why:'וגם אם היה קיים, זו אגרגציה, ולכן מקומה ב-HAVING.'},
+     {q:'סדר הביצוע הלוגי:', a:'FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY', o:['SELECT → FROM → WHERE → GROUP BY','FROM → SELECT → WHERE → GROUP BY','WHERE → FROM → SELECT → ORDER BY'], why:'סדר הכתיבה מתחיל ב-SELECT, סדר הביצוע מסתיים בו כמעט.'},
+     {q:'ONLY_FULL_GROUP_BY דורש:', a:'כל עמודה לא-אגרגטיבית ב-SELECT תופיע ב-GROUP BY', o:['GROUP BY על כל העמודות בטבלה','לפחות אגרגציה אחת ב-SELECT','ORDER BY על עמודת הקיבוץ'], why:'אחרת המנוע לא יודע איזה ערך מהקבוצה להציג.'}
+   ]}
+];
+
+// ---------- engine helpers ----------
+function buildDb(SQL){
+  const db = new SQL.Database();
+  for (const [name, t] of Object.entries(DATA)){
+    db.run(`CREATE TABLE ${name} (${t.cols.join(', ')})`);
+    const ph = t.rows[0].map(()=>'?').join(',');
+    const stmt = db.prepare(`INSERT INTO ${name} VALUES (${ph})`);
+    for (const r of t.rows) stmt.run(r);
+    stmt.free();
+  }
+  return db;
+}
+function runQuery(db, sql){
+  const res = db.exec(sql);
+  if (!res.length) return {columns:[], values:[]};
+  return res[res.length-1];
+}
+function isSelectOnly(sql){
+  const s = sql.replace(/--[^\n]*/g,'').replace(/\/\*[\s\S]*?\*\//g,'').trim();
+  if (!s) return false;
+  if (/\b(insert|update|delete|drop|alter|create|replace|attach|pragma|vacuum)\b/i.test(s)) return false;
+  return /^(select|with)\b/i.test(s);
+}
+function normVal(v){
+  if (v === null || v === undefined) return '∅';
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : (Math.round(v*100)/100).toFixed(2);
+  return String(v).trim();
+}
+function rowKey(r){ return r.map(normVal).join('\u0001'); }
+function compare(expected, actual, ordered){
+  const out = {ok:false, problems:[], missing:[], extra:[]};
+  if (expected.columns.length !== actual.columns.length){
+    out.problems.push(`מספר עמודות: צפוי ${expected.columns.length}, קיבלת ${actual.columns.length}.`);
+    return out;
+  }
+  const eKeys = expected.values.map(rowKey), aKeys = actual.values.map(rowKey);
+  if (ordered){
+    if (eKeys.length === aKeys.length && eKeys.every((k,i)=>k===aKeys[i])){ out.ok = true; return out; }
+  }
+  const eSorted = [...eKeys].sort(), aSorted = [...aKeys].sort();
+  const sameSet = eSorted.length === aSorted.length && eSorted.every((k,i)=>k===aSorted[i]);
+  if (sameSet){
+    if (ordered){ out.problems.push('הנתונים נכונים אבל הסדר לא. בדוק את ה-ORDER BY (עמודה, כיוון, או שנשכח).'); out.orderOnly = true; return out; }
+    out.ok = true; return out;
+  }
+  const eCount = new Map(), aCount = new Map();
+  for (const k of eKeys) eCount.set(k,(eCount.get(k)||0)+1);
+  for (const k of aKeys) aCount.set(k,(aCount.get(k)||0)+1);
+  for (const [k,c] of eCount){ const d = c-(aCount.get(k)||0); for(let i=0;i<d;i++) out.missing.push(k.split('\u0001')); }
+  for (const [k,c] of aCount){ const d = c-(eCount.get(k)||0); for(let i=0;i<d;i++) out.extra.push(k.split('\u0001')); }
+  if (eKeys.length !== aKeys.length) out.problems.push(`מספר שורות: צפוי ${eKeys.length}, קיבלת ${aKeys.length}.`);
+  if (aKeys.length > eKeys.length) out.problems.push('יותר שורות מהצפוי: חסר סינון, או ש-JOIN הכפיל שורות, או ששכחת DISTINCT.');
+  if (aKeys.length < eKeys.length) out.problems.push('פחות שורות מהצפוי: הסינון חזק מדי, INNER JOIN השמיט שורות, או שתנאי על NULL נכשל.');
+  if (eKeys.length === aKeys.length) out.problems.push('אותו מספר שורות אבל ערכים שונים. השווה את העמודות: אולי אגרגציה לא נכונה, עמודה לא נכונה, או ROUND.');
+  return out;
+}
+function splitTop(s){
+  const parts=[]; let depth=0, cur='', q=null;
+  for (const ch of s){
+    if (q){ cur+=ch; if (ch===q) q=null; continue; }
+    if (ch==="'"||ch==='"'){ q=ch; cur+=ch; continue; }
+    if (ch==='(') depth++; if (ch===')') depth--;
+    if (ch===',' && depth===0){ parts.push(cur.trim()); cur=''; } else cur+=ch;
+  }
+  if (cur.trim()) parts.push(cur.trim());
+  return parts;
+}
+const AGG_RE = /\b(count|sum|avg|min|max|total|group_concat)\s*\(/i;
+function normExpr(e){ return e.replace(/\s+/g,'').toLowerCase(); }
+function baseName(e){ const m = /^[a-z_][\w]*\.([a-z_]\w*)$/i.exec(e.trim()); return m ? m[1].toLowerCase() : e.trim().toLowerCase(); }
+function groupByCheck(sql){
+  const s = sql.replace(/--[^\n]*/g,' ').replace(/\s+/g,' ').trim();
+  if ((s.match(/\bselect\b/gi)||[]).length !== 1) return null; // skip subqueries / unions
+  const sel = /\bselect\s+(distinct\s+)?([\s\S]*?)\s+from\s/i.exec(s); if (!sel) return null;
+  const gb = /\bgroup\s+by\s+([\s\S]*?)(\s+having\s|\s+order\s+by\s|\s+limit\s|;|$)/i.exec(s); if (!gb) return null;
+  const groups = splitTop(gb[1]).map(g=>g.trim());
+  if (groups.some(g=>/^\d+$/.test(g))) return null; // ordinal group by, skip
+  const gNorm = new Set(groups.map(normExpr)), gBase = new Set(groups.map(baseName));
+  const aliases = new Set();
+  const items = splitTop(sel[2]);
+  const offenders = [];
+  for (let it of items){
+    let expr = it.replace(/\s+as\s+[\w"`]+$/i,'').trim();
+    const am = /\s+as\s+([\w"`]+)$/i.exec(it); if (am) aliases.add(am[1].replace(/["`]/g,'').toLowerCase());
+    if (!/\(/.test(expr) && /^\S+\s+\S+$/.test(expr)) { const [a,b]=expr.split(/\s+/); aliases.add(b.toLowerCase()); expr=a; }
+    if (AGG_RE.test(expr)) continue;
+    if (/^'.*'$/.test(expr) || /^\d+(\.\d+)?$/.test(expr) || expr==='*') continue;
+    if (gNorm.has(normExpr(expr)) || gBase.has(baseName(expr))) continue;
+    offenders.push(expr);
+  }
+  const remaining = offenders.filter(o => !groups.some(g => aliases.has(g.toLowerCase()) && !AGG_RE.test(o)));
+  if (!remaining.length) return null;
+  return `ב-SELECT יש עמודה שאינה אגרגציה ואינה ב-GROUP BY: ${remaining.map(x=>'`'+x+'`').join(', ')}. SQLite מריץ את זה, MySQL (ONLY_FULL_GROUP_BY) יזרוק שגיאה. במבחן זה נחשב טעות.`;
+}
+function staticWarnings(sql){
+  const w = [];
+  const g = groupByCheck(sql); if (g) w.push(g);
+  if (/(=|<>|!=)\s*null\b/i.test(sql)) w.push('השוואה ל-NULL עם = או <> תמיד מחזירה לא-ידוע. השתמש ב-IS NULL / IS NOT NULL.');
+  if ((sql.match(/\bselect\b/gi)||[]).length === 1){
+    const wm = /\bwhere\b([\s\S]*?)(\bgroup\s+by\b|\bhaving\b|\border\s+by\b|\blimit\b|;|$)/i.exec(sql);
+    if (wm && /\b(count|sum|avg|min|max)\s*\(/i.test(wm[1])) w.push('אגרגציה בתוך WHERE. תנאי על תוצאת אגרגציה שייך ל-HAVING.');
+  }
+  return w;
+}
+function translateError(msg){
+  const m = String(msg);
+  let mm;
+  if ((mm = /no such column: (\S+)/.exec(m))) return `אין עמודה בשם ${mm[1]}. בדוק איות, או שהכינוי של הטבלה לא הוגדר, או שאתה מתייחס לכינוי מה-SELECT בתוך WHERE (שם הוא עוד לא קיים).`;
+  if ((mm = /no such table: (\S+)/.exec(m))) return `אין טבלה בשם ${mm[1]}. הטבלאות: suppliers, products, orders, returns.`;
+  if (/misuse of aggregate/i.test(m)) return 'אגרגציה במקום לא נכון: ב-WHERE או בתוך אגרגציה אחרת. תנאי על אגרגציה הולך ל-HAVING.';
+  if (/ambiguous column name: (\S+)/.test(m)) return 'שם עמודה דו-משמעי: העמודה קיימת בשתי טבלאות ב-JOIN. הוסף קידומת (o.supplier_id).';
+  if (/SELECTs to the left and right of UNION do not have the same number of result columns/i.test(m)) return 'ל-UNION צריך אותו מספר עמודות בשני הצדדים.';
+  if ((mm = /near "([^"]*)": syntax error/.exec(m))) return `שגיאת תחביר ליד "${mm[1]}". בדוק פסיק מיותר לפני FROM, מילת מפתח חסרה, או סוגריים.`;
+  if (/incomplete input/i.test(m)) return 'השאילתה לא הושלמה: סוגריים או גרשיים לא נסגרו.';
+  return m;
+}
+//</BANK>
+
+// ---------- app ----------
+(function(){
+  const $ = s => document.querySelector(s);
+  const STORE_KEY = 'sqltrainer.v1';
+  let db = null;
+  let state = load();
+  let current = state.lastExercise || EXERCISES[0].id;
+  let filter = 'all';
+  let hintsShown = {};
+  let timer = null;
+
+  function load(){
+    try { const raw = localStorage.getItem(STORE_KEY); if (raw) return Object.assign({progress:{}, journal:[], quiz:{}}, JSON.parse(raw)); } catch(e){}
+    return {progress:{}, journal:[], quiz:{}};
+  }
+  function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} }
+  function prog(id){ return state.progress[id] || (state.progress[id] = {attempts:0, solved:false, hints:0, solution:false}); }
+  function ex(id){ return EXERCISES.find(e=>e.id===id); }
+  function topic(k){ return TOPICS.find(t=>t.key===k) || (k==='X' ? {key:'X',name:'השלמה',full:'השלמות'} : null); }
+  function banner(msg){ const b=$('#banner'); b.textContent=msg; b.classList.add('show'); clearTimeout(banner.t); banner.t=setTimeout(()=>b.classList.remove('show'),2600); }
+  function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function fmtTs(ts){ const d=new Date(ts); return d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
+  function log(entry){ state.journal.unshift(Object.assign({ts:Date.now()}, entry)); if (state.journal.length>600) state.journal.length=600; save(); }
+  function dayKey(ts){ const d=new Date(ts); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+  function streak(){
+    const days=new Set(state.journal.map(x=>dayKey(x.ts)));
+    if (!days.size) return 0;
+    let n=0; const d=new Date();
+    if (!days.has(dayKey(d.getTime()))) d.setDate(d.getDate()-1);
+    while (days.has(dayKey(d.getTime()))){ n++; d.setDate(d.getDate()-1); }
+    return n;
+  }
+
+  // theme
+  function applyTheme(){
+    const t = state.theme || 'system';
+    if (t==='system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+  }
+  function cycleTheme(){ const order=['system','light','dark']; state.theme=order[(order.indexOf(state.theme||'system')+1)%3]; save(); applyTheme(); renderHead(); }
+
+  // header stats
+  function renderHead(){
+    const solved=EXERCISES.filter(e=>prog(e.id).solved).length;
+    const qAll=THEORY.reduce((a,t)=>a+t.quiz.length,0), qOk=Object.values(state.quiz||{}).filter(q=>q.correct).length;
+    const themeLabel={system:'ערכת נושא: מערכת',light:'ערכת נושא: בהיר',dark:'ערכת נושא: כהה'}[state.theme||'system'];
+    $('#headstats').innerHTML=`<div class="hstat"><span class="n">${solved}/${EXERCISES.length}</span><span class="l">תרגילים</span></div><div class="hstat"><span class="n">${qOk}/${qAll}</span><span class="l">שאלות ידע</span></div><div class="hstat"><span class="n">${streak()}</span><span class="l">ימי רצף</span></div><button class="themeBtn ghost" type="button" id="themeBtn">${themeLabel}</button>`;
+    $('#themeBtn').onclick=cycleTheme;
+  }
+
+  // tabs
+  function showTab(name){
+    document.querySelectorAll('#tabs [role=tab]').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===name));
+    document.querySelectorAll('.panel').forEach(p=>p.hidden = p.id !== 'panel-'+name);
+    if (name==='journal') renderJournal();
+    if (name==='session') renderSessions();
+    if (name==='practice') renderProgress();
+    $('#rail').classList.remove('open');
+    try { history.replaceState(null,'','#'+name); } catch(e){}
+    window.scrollTo({top:0});
+  }
+  $('#tabs').addEventListener('click', e=>{ const b=e.target.closest('[role=tab]'); if (b) showTab(b.dataset.tab); });
+
+  // progress chips
+  function renderProgress(){
+    const el = $('#progress'); el.innerHTML='';
+    for (const t of TOPICS){
+      const list = EXERCISES.filter(e=>e.topic===t.key);
+      const solved = list.filter(e=>prog(e.id).solved).length;
+      const c = document.createElement('button'); c.className='chip'+(solved===list.length?' done':''); c.type='button';
+      c.innerHTML = `<span class="bar"><i style="width:${Math.round(solved/list.length*100)}%"></i></span>${esc(t.name)} <b>${solved}/${list.length}</b>`;
+      c.title = t.full; c.onclick=()=>{ filter=t.key; showTab('practice'); renderList(); const first=list.find(e=>!prog(e.id).solved)||list[0]; openExercise(first.id); };
+      el.appendChild(c);
+    }
+    renderHead();
+  }
+
+  // exercise list
+  function renderFilters(){
+    const el=$('#filters'); el.innerHTML='';
+    const mk=(k,label)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=label; b.setAttribute('aria-pressed', filter===k); b.onclick=()=>{filter=k; renderList();}; el.appendChild(b); };
+    mk('all','הכל'); for (const t of TOPICS) mk(t.key, t.name);
+  }
+  function renderList(){
+    renderFilters();
+    const el=$('#exlist'); el.innerHTML='';
+    let lastTopic=null;
+    for (const e of EXERCISES){
+      if (filter!=='all' && e.topic!==filter) continue;
+      if (e.topic!==lastTopic){ const g=document.createElement('div'); g.className='group'; g.textContent=topic(e.topic).full; el.appendChild(g); lastTopic=e.topic; }
+      const p=prog(e.id);
+      const b=document.createElement('button'); b.type='button';
+      b.setAttribute('aria-current', e.id===current);
+      b.innerHTML=`<span class="dot ${p.solved?'solved':(p.attempts?'tried':'')}"></span><span class="title">${esc(e.q)}</span><span class="id">${e.id}</span>`;
+      b.onclick=()=>{ openExercise(e.id); $('#rail').classList.remove('open'); };
+      el.appendChild(b);
+    }
+  }
+  $('#railClose').onclick=()=>$('#rail').classList.remove('open');
+
+  function openExercise(id){
+    current=id; state.lastExercise=id; save();
+    const e=ex(id), t=topic(e.topic), p=prog(id);
+    $('#qhead').innerHTML=`<span class="badge">${e.id}</span><span class="badge">${esc(t.full)}</span><span class="badge">${esc(t.pages)}</span><span class="badge lvl${e.level}">${['','בסיסי','בינוני','מתקדם'][e.level]}</span>${p.solved?'<span class="badge" style="color:var(--ok)">נפתר</span>':''}${e.ordered?'<span class="badge">הסדר נבדק</span>':''}<span class="spacer"></span><button class="small" type="button" id="railToggle">כל התרגילים</button>`;
+    $('#railToggle').onclick=()=>$('#rail').classList.add('open');
+    $('#qtext').textContent=e.q;
+    const n=$('#qnote'); n.hidden=!e.note; n.textContent=e.note||'';
+    $('#editor').value = (state.drafts && state.drafts[id]) || '';
+    $('#hints').innerHTML=''; hintsShown[id]=hintsShown[id]||0;
+    for (let i=0;i<hintsShown[id];i++) appendHint(e.hints[i]);
+    $('#solution').hidden=true; $('#solution').innerHTML='';
+    $('#resultCard').hidden=true;
+    updateSolBtn();
+    renderList();
+    document.querySelectorAll('#exlist [aria-current=true]').forEach(b=>b.scrollIntoView({block:'nearest'}));
+  }
+  function appendHint(text){ const d=document.createElement('div'); d.className='hint'; d.textContent=text; $('#hints').appendChild(d); }
+  function updateSolBtn(){
+    const p=prog(current), e=ex(current);
+    const left=Math.max(0,3-p.attempts);
+    const b=$('#solBtn');
+    b.disabled = left>0 && !p.solution;
+    b.textContent = left>0 && !p.solution ? `פתרון (עוד ${left})` : 'פתרון';
+    const hs=hintsShown[current]||0;
+    $('#hintBtn').disabled = hs >= e.hints.length;
+    $('#hintBtn').textContent = hs >= e.hints.length ? 'אין עוד רמזים' : `רמז (${hs}/${e.hints.length})`;
+  }
+  $('#hintBtn').onclick=()=>{
+    const e=ex(current); const n=hintsShown[current]||0;
+    if (n>=e.hints.length) return;
+    appendHint(e.hints[n]); hintsShown[current]=n+1; prog(current).hints++; save(); updateSolBtn();
+  };
+  $('#solBtn').onclick=()=>{
+    const e=ex(current), p=prog(current);
+    if (p.attempts<3 && !p.solution) return;
+    if (!p.solution){ p.solution=true; log({kind:'solution', ex:e.id, topic:e.topic, sql:$('#editor').value}); save(); }
+    const s=$('#solution'); s.hidden=false;
+    s.innerHTML=`<div class="muted tiny">פתרון ייחוס (יש עוד דרכים נכונות). נרשם ביומן שנפתח.</div><pre>${esc(e.sql)}</pre>`;
+  };
+  $('#clearBtn').onclick=()=>{ $('#editor').value=''; saveDraft(); $('#editor').focus(); };
+  $('#prevBtn').onclick=()=>step(-1); $('#nextBtn').onclick=()=>step(1);
+  function step(d){ const list=EXERCISES.filter(e=>filter==='all'||e.topic===filter); let i=list.findIndex(e=>e.id===current); i=(i+d+list.length)%list.length; openExercise(list[i].id); }
+  function saveDraft(){ state.drafts=state.drafts||{}; state.drafts[current]=$('#editor').value; save(); }
+  $('#editor').addEventListener('input', ()=>{ clearTimeout(saveDraft.t); saveDraft.t=setTimeout(saveDraft,400); });
+  $('#editor').addEventListener('keydown', e=>{ if ((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); runCurrent(); } });
+  $('#run').onclick=runCurrent;
+
+  function renderTable(container, res, limit){
+    if (!res.columns.length){ container.innerHTML='<p class="muted" style="padding:10px">אין שורות.</p>'; return; }
+    const rows=res.values.slice(0, limit||200);
+    const heb=/[֐-׿]/;
+    let h='<table class="res"><thead><tr>'+res.columns.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr></thead><tbody>';
+    for (const r of rows){ h+='<tr>'+r.map(v=> v===null?'<td class="null">NULL</td>':`<td class="${heb.test(String(v))?'he':''}">${esc(typeof v==='number'&&!Number.isInteger(v)?Math.round(v*1000)/1000:v)}</td>`).join('')+'</tr>'; }
+    h+='</tbody></table>'; container.innerHTML=h;
+    if (res.values.length>rows.length) container.insertAdjacentHTML('beforeend', `<p class="muted tiny" style="padding:6px 10px">מוצגות ${rows.length} מתוך ${res.values.length} שורות.</p>`);
+  }
+
+  function runCurrent(){
+    if (!db){ banner('המנוע עדיין נטען'); return; }
+    const e=ex(current), p=prog(current), sql=$('#editor').value.trim();
+    const fb=$('#feedback'), card=$('#resultCard');
+    card.hidden=false;
+    if (!sql){ fb.className='feedback warn'; fb.innerHTML='<span class="icon">!</span><div>אין מה להריץ.</div>'; $('#resmeta').innerHTML=''; $('#restable').innerHTML=''; return; }
+    if (!isSelectOnly(sql)){ fb.className='feedback warn'; fb.innerHTML='<span class="icon">!</span><div>כאן מריצים רק SELECT (או WITH). הנתונים לא ניתנים לשינוי.</div>'; $('#restable').innerHTML=''; return; }
+    let actual;
+    try { actual = runQuery(db, sql); }
+    catch(err){
+      p.attempts++; save(); updateSolBtn();
+      log({kind:'sql_error', ex:e.id, topic:e.topic, sql, msg:String(err.message||err)});
+      fb.className='feedback bad';
+      fb.innerHTML=`<span class="icon">×</span><div><b>שגיאת SQL.</b> ${esc(translateError(err.message||err))}<div class="mono tiny muted" style="direction:ltr;text-align:left;margin-top:4px">${esc(err.message||err)}</div></div>`;
+      $('#resmeta').innerHTML=''; $('#restable').innerHTML=''; renderList(); renderHead(); scrollToResult(); return;
+    }
+    const expected = runQuery(db, e.sql);
+    const cmp = compare(expected, actual, !!e.ordered);
+    const warns = staticWarnings(sql);
+    $('#resmeta').innerHTML = `<span>${actual.values.length} שורות</span><span>${actual.columns.length} עמודות</span><span class="muted">צפוי: ${expected.values.length} שורות, ${expected.columns.length} עמודות</span>`;
+    renderTable($('#restable'), actual);
+    if (cmp.ok && !warns.length){
+      const first=!p.solved; p.solved=true; p.attempts++; save();
+      if (first) log({kind:'solved', ex:e.id, topic:e.topic, sql, attempts:p.attempts, hints:p.hints});
+      fb.className='feedback ok';
+      fb.innerHTML=`<span class="icon">✓</span><div><b>נכון.</b> ${p.attempts===1&&!p.hints?'בניסיון ראשון ובלי רמזים.':`ניסיון ${p.attempts}${p.hints?`, ${p.hints} רמזים`:''}.`} ${nextSuggestion()}</div>`;
+      renderProgress(); renderList(); updateSolBtn(); scrollToResult(); return;
+    }
+    if (cmp.ok && warns.length){
+      p.attempts++; save();
+      log({kind:'wrong', ex:e.id, topic:e.topic, sql, msg:warns[0]});
+      fb.className='feedback warn';
+      fb.innerHTML=`<span class="icon">!</span><div><b>התוצאה תואמת, אבל השאילתה לא תעבור ב-MySQL.</b><ul>${warns.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>תקן והרץ שוב כדי שייחשב כפתור.</div>`;
+      updateSolBtn(); renderList(); renderHead(); scrollToResult(); return;
+    }
+    p.attempts++; save(); updateSolBtn();
+    log({kind:'wrong', ex:e.id, topic:e.topic, sql, msg:cmp.problems[0]||''});
+    let detail='';
+    if (!cmp.orderOnly && (cmp.missing.length||cmp.extra.length)){
+      const show=(arr,label)=> arr.length?`<li>${label} (${arr.length}): <span class="mono" style="direction:ltr;unicode-bidi:isolate">${arr.slice(0,3).map(r=>'['+r.map(esc).join(', ')+']').join(' ')}${arr.length>3?' …':''}</span></li>`:'';
+      detail = show(cmp.missing,'שורות שחסרות אצלך')+show(cmp.extra,'שורות מיותרות אצלך');
+    }
+    fb.className='feedback '+(cmp.orderOnly?'warn':'bad');
+    fb.innerHTML=`<span class="icon">${cmp.orderOnly?'!':'×'}</span><div><b>${cmp.orderOnly?'כמעט.':'לא תואם.'}</b><ul>${cmp.problems.map(x=>`<li>${esc(x)}</li>`).join('')}${detail}${warns.map(w=>`<li>${esc(w)}</li>`).join('')}</ul>${p.attempts>=2&&(hintsShown[current]||0)<e.hints.length?'<span class="tiny muted">יש רמז זמין.</span>':''}</div>`;
+    renderList(); renderHead(); scrollToResult();
+  }
+  function scrollToResult(){ if (window.innerWidth<=820) $('#resultCard').scrollIntoView({behavior:'smooth',block:'start'}); }
+  function nextSuggestion(){
+    const unsolved=EXERCISES.filter(x=>!prog(x.id).solved && (filter==='all'||x.topic===filter));
+    return unsolved.length?`נשארו ${unsolved.length} ${filter==='all'?'בסך הכל':'בנושא'}.`:'סיימת את הנושא.';
+  }
+
+  // sandbox
+  function runSandbox(){
+    if (!db) return;
+    const sql=$('#sbEditor').value.trim(); const card=$('#sbResultCard'); card.hidden=false;
+    if (!isSelectOnly(sql)){ $('#sbMeta').innerHTML='<span style="color:var(--warn)">רק SELECT.</span>'; $('#sbTable').innerHTML=''; return; }
+    try { const r=runQuery(db, sql); $('#sbMeta').innerHTML=`<span>${r.values.length} שורות</span><span>${r.columns.length} עמודות</span>`; renderTable($('#sbTable'), r, 500); }
+    catch(err){ $('#sbMeta').innerHTML=`<span style="color:var(--bad)">${esc(translateError(err.message||err))}</span>`; $('#sbTable').innerHTML=`<pre class="mono tiny" style="padding:10px;direction:ltr;text-align:left;margin:0">${esc(err.message||err)}</pre>`; }
+  }
+  $('#sbRun').onclick=runSandbox;
+  $('#sbEditor').addEventListener('keydown', e=>{ if ((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); runSandbox(); } });
+
+  // schema diagram + tables + theory
+  function renderErd(){
+    const box=(x,y,name,cols)=>`<g><rect class="box" x="${x}" y="${y}" width="170" height="${28+cols.length*16}" rx="8"/><text class="ttl" x="${x+85}" y="${y+19}" text-anchor="middle">${name}</text><line x1="${x+10}" y1="${y+26}" x2="${x+160}" y2="${y+26}" stroke="var(--line)"/>${cols.map((c,i)=>`<text class="${c.startsWith('*')?'pk':'col'}" x="${x+14}" y="${y+42+i*16}">${c.replace('*','')}</text>`).join('')}</g>`;
+    $('#erd').innerHTML=`<svg viewBox="0 0 820 230" xmlns="http://www.w3.org/2000/svg" direction="ltr">
+      ${box(20,20,'suppliers',['*supplier_id','supplier_name','region','rating'])}
+      ${box(325,20,'orders',['*order_id','order_date','supplier_id','product_id','condition / status','quantity / amount','district'])}
+      ${box(630,20,'products',['*product_id','product_name','category','list_price'])}
+      ${box(325,172,'returns',['*return_id','order_id','return_date','status / days_to_close'])}
+      <path class="rel" d="M190 60 H325"/><text class="lbl" x="257" y="54" text-anchor="middle">1 : N</text>
+      <path class="rel" d="M630 60 H495"/><text class="lbl" x="562" y="54" text-anchor="middle">1 : N</text>
+      <path class="rel" d="M410 160 V172"/><text class="lbl" x="440" y="168">1 : N</text>
+    </svg>`;
+  }
+  function renderSchema(){
+    renderErd();
+    const el=$('#schema'); el.innerHTML='';
+    for (const [name,t] of Object.entries(DATA)){
+      const d=document.createElement('div'); d.className='card tbl';
+      d.innerHTML=`<h3>${name}</h3><p class="desc">${esc(TABLE_DESC[name])}</p><ul>${t.cols.map(c=>{const [n,ty]=c.split(' ');return `<li><span>${n}</span><span>${ty}${/PRIMARY/.test(c)?' PK':''}</span></li>`;}).join('')}</ul><button class="small" type="button">הצג ${t.rows.length} שורות</button>`;
+      d.querySelector('button').onclick=()=>{ $('#sbEditor').value=`SELECT * FROM ${name};`; showTab('sandbox'); runSandbox(); };
+      el.appendChild(d);
+    }
+    const th=$('#theory'); th.innerHTML='';
+    for (const c of THEORY){
+      const d=document.createElement('details'); d.className='theory'; d.dataset.topic=c.topic;
+      const qOk=c.quiz.filter((q,i)=>(state.quiz[c.topic+i]||{}).correct).length;
+      d.innerHTML=`<summary><span>${esc(c.title)}</span><span class="pg">${esc(c.pages)}</span><span class="qs ${qOk===c.quiz.length?'full':''}">${qOk}/${c.quiz.length}</span></summary>
+        <div class="body">${c.html}
+          <div class="examples"><div class="eyebrow">דוגמאות חיות</div>${c.examples.map((x,i)=>`<div class="example"><div class="exhead"><button class="small" type="button" data-ex="${i}">הרץ</button><span>${esc(x.label)}</span></div><pre>${esc(x.sql)}</pre><div class="exres" id="exres-${c.topic}-${i}"></div></div>`).join('')}</div>
+          <div class="quiz"><div class="eyebrow">בדוק את עצמך</div><div id="quiz-${c.topic}"></div></div>
+        </div>`;
+      d.querySelectorAll('[data-ex]').forEach(b=>b.onclick=()=>{
+        if (!db){ banner('המנוע עדיין נטען'); return; }
+        const x=c.examples[+b.dataset.ex]; const out=d.querySelector(`#exres-${c.topic}-${b.dataset.ex}`);
+        try { const r=runQuery(db,x.sql); out.innerHTML='<div class="tablewrap"></div>'; renderTable(out.firstChild, r, 50); }
+        catch(err){ out.innerHTML=`<div class="feedback bad"><span class="icon">×</span><div>${esc(translateError(err.message||err))}</div></div>`; }
+      });
+      th.appendChild(d);
+      renderQuiz(c, d.querySelector(`#quiz-${c.topic}`));
+    }
+  }
+  function shuffled(arr, seed){
+    const a=arr.slice(); let s=seed;
+    for (let i=a.length-1;i>0;i--){ s=(s*9301+49297)%233280; const j=Math.floor(s/233280*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
+  }
+  function renderQuiz(card, el){
+    el.innerHTML='';
+    card.quiz.forEach((q,i)=>{
+      const key=card.topic+i; const st=state.quiz[key]||{};
+      const opts=shuffled([q.a,...q.o], (Date.now()/86400000|0)+i*7+card.topic.charCodeAt(0));
+      const d=document.createElement('div'); d.className='qitem';
+      d.innerHTML=`<div class="qq">${i+1}. ${esc(q.q)}</div><div class="opts">${opts.map(o=>`<button type="button" ${st.answered?'disabled':''} class="${st.answered&&o===q.a?'right':''}${st.answered&&st.pick===o&&o!==q.a?' wrongpick':''}">${esc(o)}</button>`).join('')}</div>${st.answered?`<div class="why">${esc(q.why)}</div>`:''}`;
+      d.querySelectorAll('.opts button').forEach(b=>b.onclick=()=>{
+        const pick=b.textContent; const correct=pick===q.a;
+        state.quiz[key]={answered:true, pick, correct, ts:Date.now()}; save();
+        if (!correct) log({kind:'quiz', ex:'Q'+key, topic:card.topic, msg:q.q, sql:''}); else log({kind:'solved', ex:'Q'+key, topic:card.topic, attempts:1, hints:0, quiz:true});
+        renderQuiz(card, el); renderHead();
+        const sum=el.closest('details').querySelector('.qs'); const ok=card.quiz.filter((qq,j)=>(state.quiz[card.topic+j]||{}).correct).length; sum.textContent=`${ok}/${card.quiz.length}`; sum.classList.toggle('full', ok===card.quiz.length);
+      });
+      el.appendChild(d);
+    });
+    const anyAnswered=card.quiz.some((q,i)=>(state.quiz[card.topic+i]||{}).answered);
+    if (anyAnswered){ const r=document.createElement('button'); r.type='button'; r.className='small ghost'; r.textContent='נסה שוב את השאלות של הכרטיס'; r.onclick=()=>{ card.quiz.forEach((q,i)=>delete state.quiz[card.topic+i]); save(); renderQuiz(card, el); renderHead(); const sum=el.closest('details').querySelector('.qs'); sum.textContent=`0/${card.quiz.length}`; sum.classList.remove('full'); }; el.appendChild(r); }
+  }
+
+  // journal
+  function renderJournal(){
+    const j=state.journal;
+    const solved=EXERCISES.filter(e=>prog(e.id).solved).length;
+    const wrong=j.filter(x=>x.kind==='wrong').length, errs=j.filter(x=>x.kind==='sql_error').length, sols=j.filter(x=>x.kind==='solution').length, qz=j.filter(x=>x.kind==='quiz').length;
+    const firstTry=j.filter(x=>x.kind==='solved'&&!x.quiz&&x.attempts===1&&!x.hints).length;
+    $('#stats').innerHTML=[[solved+'/'+EXERCISES.length,'תרגילים שנפתרו'],[firstTry,'בניסיון ראשון בלי רמז'],[wrong,'תוצאות לא תואמות'],[errs,'שגיאות SQL'],[qz,'שאלות ידע שגויות'],[sols,'פתרונות שנפתחו'],[streak(),'ימי רצף']].map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+    const ts=$('#topicstats'); ts.innerHTML='';
+    for (const t of [...TOPICS, {key:'X',name:'השלמה'}]){
+      const n=j.filter(x=>x.topic===t.key&&(x.kind==='wrong'||x.kind==='sql_error'||x.kind==='solution'||x.kind==='quiz')).length;
+      const c=document.createElement('span'); c.className='chip'; c.innerHTML=`${esc(t.name)} <b>${n}</b> טעויות`; c.style.borderColor = n>=3?'var(--bad)':n>0?'var(--warn)':'var(--line)'; ts.appendChild(c);
+    }
+    const el=$('#journal'); el.innerHTML='';
+    if (!j.length){ el.innerHTML='<p class="muted">היומן ריק. כל ניסיון שלא תואם, כל שגיאת SQL, כל שאלת ידע שגויה וכל פתרון שנפתח יירשמו כאן, עם השאילתה שכתבת.</p>'; return; }
+    const labels={wrong:'לא תואם',sql_error:'שגיאת SQL',solution:'פתרון נפתח',solved:'נפתר',quiz:'שאלת ידע'};
+    for (const x of j.slice(0,150)){
+      const d=document.createElement('div'); d.className='entry';
+      const isQuiz=String(x.ex).startsWith('Q');
+      d.innerHTML=`<span class="kind ${x.kind}">${labels[x.kind]||x.kind}</span><div><div><b>${esc(x.ex)}</b> <span class="muted">${esc(topic(x.topic)?topic(x.topic).name:'')}</span>${x.msg?` <span class="muted">· ${esc(x.msg)}</span>`:''}</div>${x.sql?`<pre>${esc(x.sql)}</pre>`:''}</div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><span class="ts">${fmtTs(x.ts)}</span><button class="small ghost" type="button">${isQuiz?'לכרטיס':'לתרגיל'}</button></div>`;
+      d.querySelector('button').onclick=()=>{ if (isQuiz){ showTab('theory'); const det=document.querySelector(`details[data-topic="${x.topic}"]`); if (det){ det.open=true; det.scrollIntoView({block:'start'}); } } else { showTab('practice'); openExercise(x.ex); } };
+      el.appendChild(d);
+    }
+  }
+  function csv(){
+    const rows=[['timestamp','kind','exercise','topic','message','sql']];
+    for (const x of state.journal) rows.push([new Date(x.ts).toISOString(), x.kind, x.ex, x.topic, x.msg||'', x.sql||'']);
+    return '﻿'+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  }
+  async function copyText(text){
+    try { await navigator.clipboard.writeText(text); banner('הועתק ללוח'); }
+    catch(e){
+      const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); banner('הועתק ללוח'); } catch(e2){ banner('ההעתקה נכשלה'); }
+      ta.remove();
+    }
+  }
+  $('#exportBtn').onclick=()=>copyText(csv());
+  $('#exportJson').onclick=()=>copyText(JSON.stringify(state,null,1));
+  $('#resetBtn').onclick=()=>{
+    const c=$('#resetConfirm'); c.hidden=false;
+    c.innerHTML=`<div class="confirm"><span>למחוק את כל ההתקדמות, שאלות הידע והיומן? אין שחזור.</span><button class="small" type="button" id="resetYes">כן, מחק</button><button class="small ghost" type="button" id="resetNo">בטל</button></div>`;
+    $('#resetYes').onclick=()=>{ const theme=state.theme; state={progress:{},journal:[],quiz:{},theme}; save(); hintsShown={}; c.hidden=true; renderJournal(); renderProgress(); renderSchema(); openExercise(EXERCISES[0].id); banner('אופס'); };
+    $('#resetNo').onclick=()=>{ c.hidden=true; };
+  };
+
+  // sessions
+  const SESSIONS=[
+    {key:'friday', name:'בלוק שישי', when:'שישי 08:00–09:30 · חומר חדש', desc:'הבלוק היחיד שבו לומדים נושא חדש. תיאוריה קצרה, שחזור מהזיכרון, ואז רוב הזמן במנוע.',
+     phases:[{name:'תיאוריה: כרטיס אחד, דוגמאות ושאלות ידע',min:20,tab:'theory'},{name:'שחזור בעיניים עצומות, על דף',min:10,tab:'session',recall:true},{name:'תרגול במנוע',min:55,tab:'practice'},{name:'רישום הטעויות',min:5,tab:'journal'}]},
+    {key:'motzash', name:'בלוק מוצ"ש', when:'מוצ"ש 20:00–21:00 · תרגול בלבד', desc:'אפס תיאוריה. פותחים ביומן של שישי, מתרגלים, וסוגרים בדוח משולב אחד.',
+     phases:[{name:'חזרה על טעויות שישי',min:10,tab:'journal'},{name:'תרגילים מהמאגר',min:40,tab:'practice'},{name:'דוח משולב אחד',min:10,tab:'practice',topic:'H'}]},
+    {key:'daily', name:'שליפה יומית', when:'ראשון–חמישי · 10 דקות', desc:'שאילתה אחת מהראש, בלי תיאוריה. המאמן בוחר תרגיל מהנושא שבו היו לך הכי הרבה טעויות.',
+     phases:[{name:'שאילתה אחת, מהראש',min:10,tab:'practice',pick:'weak'}]}
+  ];
+  function renderSessions(){
+    const el=$('#sessions'); el.innerHTML='';
+    for (const s of SESSIONS){
+      const d=document.createElement('div'); d.className='card session';
+      const total=s.phases.reduce((a,p)=>a+p.min,0);
+      d.innerHTML=`<h3><span>${esc(s.name)}</span><span class="when">${esc(s.when)}</span></h3><p class="muted tiny" style="margin-top:6px">${esc(s.desc)}</p><ul class="phases">${s.phases.map((p,i)=>`<li class="${timer&&timer.session===s.key?(i<timer.idx?'past':i===timer.idx?'now':''):''}"><span>${esc(p.name)}</span><span class="m">${p.min} דק׳</span></li>`).join('')}</ul><div class="toolbar" style="margin:0"><button class="primary" type="button">התחל (${total} דק׳)</button></div>`;
+      d.querySelector('button').onclick=()=>startSession(s.key);
+      el.appendChild(d);
+    }
+    renderActive();
+  }
+  function pickWeak(){
+    const counts={};
+    for (const x of state.journal) if (x.kind!=='solved' && x.topic!=='X') counts[x.topic]=(counts[x.topic]||0)+1;
+    const weak=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+    let pool = weak ? EXERCISES.filter(e=>e.topic===weak[0]) : EXERCISES.filter(e=>!prog(e.id).solved);
+    if (!pool.length) pool=EXERCISES;
+    const unsolved=pool.filter(e=>!prog(e.id).solved); if (unsolved.length) pool=unsolved;
+    return pool[Math.floor(Math.random()*pool.length)].id;
+  }
+  function startSession(key){
+    const s=SESSIONS.find(x=>x.key===key);
+    if (timer && timer.h) clearInterval(timer.h);
+    timer={session:key, idx:0, phaseEnd:Date.now()+s.phases[0].min*60000, paused:false, remainingAtPause:0};
+    enterPhase();
+    timer.h=setInterval(tick,1000);
+    renderSessions(); showTab('session');
+  }
+  function enterPhase(){
+    const s=SESSIONS.find(x=>x.key===timer.session), p=s.phases[timer.idx];
+    if (p.pick==='weak'){ openExercise(pickWeak()); }
+    if (p.topic){ filter=p.topic; renderList(); const first=EXERCISES.find(e=>e.topic===p.topic&&!prog(e.id).solved)||EXERCISES.find(e=>e.topic===p.topic); openExercise(first.id); }
+    banner(`שלב: ${p.name}`);
+    if (p.tab && p.tab!=='session') setTimeout(()=>showTab(p.tab), 900);
+  }
+  function tick(){
+    if (!timer || timer.paused) return;
+    const left=timer.phaseEnd-Date.now();
+    if (left<=0){
+      const s=SESSIONS.find(x=>x.key===timer.session);
+      if (timer.idx+1<s.phases.length){ timer.idx++; timer.phaseEnd=Date.now()+s.phases[timer.idx].min*60000; enterPhase(); renderSessions(); }
+      else { clearInterval(timer.h); banner('הבלוק הסתיים. רשום את הטעויות ביומן ותסגור.'); timer.done=true; renderActive(); document.title='מאמן SQL'; return; }
+    }
+    renderActive();
+  }
+  function renderActive(){
+    const el=$('#activeSession');
+    if (!timer){ el.innerHTML='<p class="muted">אין בלוק פעיל. בחר אחד מהבלוקים למטה. העיקרון: להפריד רצף מהתקדמות. חומר חדש רק בשישי, מוצ"ש לתרגול בלבד, ובימי חול עשר דקות שליפה בלי תיאוריה.</p>'; return; }
+    const s=SESSIONS.find(x=>x.key===timer.session), p=s.phases[timer.idx];
+    const left=Math.max(0, timer.paused ? timer.remainingAtPause : timer.phaseEnd-Date.now());
+    const mm=String(Math.floor(left/60000)).padStart(2,'0'), ss=String(Math.floor(left/1000)%60).padStart(2,'0');
+    const pct=100-Math.round(left/(p.min*60000)*100);
+    document.title = timer.done ? 'מאמן SQL' : `${mm}:${ss} · ${p.name}`;
+    el.innerHTML=`<div class="timerbox">
+      <div class="clock ${left<60000?'low':''}">${timer.done?'00:00':mm+':'+ss}</div>
+      <div><div style="font-weight:700">${esc(s.name)} · שלב ${timer.idx+1}/${s.phases.length}</div><div class="muted">${esc(p.name)}</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${timer.done?'':`<button type="button" id="tPause">${timer.paused?'המשך':'השהה'}</button><button type="button" id="tSkip" class="ghost">לשלב הבא</button>`}
+        <button type="button" id="tStop" class="ghost">סיים בלוק</button>
+      </div>
+      <div class="phasebar"><i style="width:${pct}%"></i></div>
+    </div>
+    ${p.recall && !timer.done ? recallHtml() : ''}`;
+    const pb=$('#tPause'); if (pb) pb.onclick=()=>{ if (timer.paused){ timer.phaseEnd=Date.now()+timer.remainingAtPause; timer.paused=false; } else { timer.remainingAtPause=timer.phaseEnd-Date.now(); timer.paused=true; } renderActive(); };
+    const sk=$('#tSkip'); if (sk) sk.onclick=()=>{ timer.phaseEnd=Date.now(); timer.paused=false; tick(); };
+    $('#tStop').onclick=()=>{ clearInterval(timer.h); timer=null; document.title='מאמן SQL'; renderSessions(); };
+    if (p.recall && !timer.done) wireRecall();
+  }
+  function recallHtml(){
+    return `<div class="recall" style="margin-top:14px">
+      <div class="eyebrow" style="margin-bottom:6px">שחזור מהזיכרון</div>
+      <p class="muted tiny" style="margin-bottom:8px">בלי להציץ: כתוב את שלד התחביר של הנושא שלמדת עכשיו, את סדר הביצוע, ואת שני הכללים שהכי קל לשכוח. אחר כך השווה לכרטיס.</p>
+      <select id="recallTopic" style="margin-bottom:8px">${THEORY.map(t=>`<option value="${t.topic}">${esc(t.title)}</option>`).join('')}</select>
+      <textarea id="recallText" placeholder="SELECT ... FROM ... WHERE ..."></textarea>
+      <div class="toolbar"><button type="button" id="recallCompare">השווה לכרטיס</button></div>
+      <div id="recallCard" style="margin-top:10px"></div>
+    </div>`;
+  }
+  function wireRecall(){
+    try { $('#recallText').value = state.recallDraft||''; } catch(e){}
+    $('#recallText').addEventListener('input', e=>{ state.recallDraft=e.target.value; save(); });
+    $('#recallCompare').onclick=()=>{
+      const t=THEORY.find(x=>x.topic===$('#recallTopic').value);
+      $('#recallCard').innerHTML=`<details class="theory" open><summary><span>${esc(t.title)}</span><span class="pg">${esc(t.pages)}</span></summary><div class="body">${t.html}</div></details>`;
+    };
+  }
+
+  // install tip (iOS Safari, not yet installed)
+  (function(){
+    const ua=navigator.userAgent; const ios=/iPhone|iPad|iPod/.test(ua); const standalone=window.navigator.standalone===true || matchMedia('(display-mode: standalone)').matches;
+    let dismissed=false; try { dismissed=localStorage.getItem('sqltrainer.installTip')==='1'; } catch(e){}
+    if (ios && !standalone && !dismissed && location.protocol.startsWith('http')) $('#installTip').classList.add('show');
+    $('#installClose').onclick=()=>{ $('#installTip').classList.remove('show'); try { localStorage.setItem('sqltrainer.installTip','1'); } catch(e){} };
+  })();
+
+  // boot
+  applyTheme();
+  renderSchema(); renderFilters(); renderList(); renderProgress(); renderSessions();
+  openExercise(current);
+  const startTab = (location.hash||'').replace('#','');
+  if (['practice','session','journal','theory','sandbox'].includes(startTab)) showTab(startTab);
+  $('#run').disabled=true; $('#sbRun').disabled=true;
+  function engineReady(){ $('#run').disabled=false; $('#sbRun').disabled=false; }
+  function engineFail(err){
+    $('#resultCard').hidden=false; $('#feedback').className='feedback bad';
+    $('#feedback').innerHTML=`<span class="icon">×</span><div><b>מנוע ה-SQL לא נטען.</b> רענן את הדף. (${esc(String(err))})</div>`;
+  }
+  if (typeof initSqlJs !== 'function'){ engineFail('sql-asm.js לא נטען'); }
+  else initSqlJs().then(SQL=>{ db=buildDb(SQL); engineReady(); }).catch(engineFail);
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
+})();
+</script>
+</body>
+</html>
