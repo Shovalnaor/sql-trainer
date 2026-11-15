@@ -5,7 +5,7 @@ const root = path.resolve(__dirname, '..');
 const htmlPath = process.argv[2] ? path.resolve(process.argv[2]) : path.join(root, 'index.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const bank = html.split('//<BANK>')[1].split('//</BANK>')[0];
-const api = new Function(bank + '\nreturn {DATA,EXERCISES,TOPICS,THEORY,buildDb,runQuery,compare,staticWarnings,isSelectOnly,translateError,derivedAliasCheck};')();
+const api = new Function(bank + '\nreturn {DATA,EXERCISES,TOPICS,THEORY,buildDb,runQuery,compare,staticWarnings,isSelectOnly,translateError,derivedAliasCheck,mergeState,looksLikeState};')();
 const initSqlJs = require(path.join(root, 'sql-asm.js'));
 
 initSqlJs().then(SQL => {
@@ -59,6 +59,42 @@ initSqlJs().then(SQL => {
   expect('window in WHERE translated', /חלון/.test(api.translateError('misuse of window function ROW_NUMBER()')));
   expect('non-select blocked', !api.isSelectOnly("DROP TABLE orders") && !api.isSelectOnly("SELECT 1; DELETE FROM orders"));
   expect('error translated', /product_nme/.test(api.translateError('no such column: product_nme')));
+
+  // state merge: two devices must converge without losing anything
+  const m = api.mergeState;
+  const A = {
+    progress: {A1:{solved:true,attempts:2,hints:1,solution:false,stage:1,due:100,seconds:90}, A2:{solved:false,attempts:3,hints:0,solution:true}},
+    journal: [{ts:300,kind:'solved',ex:'A1'},{ts:100,kind:'wrong',ex:'A2',msg:'x'}],
+    quiz: {A0:{answered:true,correct:true,ts:50}, A1:{answered:true,correct:false,ts:60}},
+    exams: [{ts:10,score:4,total:10}], read:{A:true}, drafts:{A3:'SELECT 1'}, theme:'dark', lastExercise:'A2'
+  };
+  const B = {
+    progress: {A1:{solved:false,attempts:1,hints:0,solution:false,stage:0,due:50,seconds:40}, B1:{solved:true,attempts:1,hints:0,solution:false}},
+    journal: [{ts:300,kind:'solved',ex:'A1'},{ts:200,kind:'quiz',ex:'QB0'}],
+    quiz: {A1:{answered:true,correct:true,ts:70}, B0:{answered:true,correct:false,ts:80}},
+    exams: [{ts:20,score:7,total:10}], read:{B:true}, drafts:{A3:'',B2:'SELECT 2'}, theme:'light'
+  };
+  const ab = m(A,B), ba = m(B,A);
+  expect('merge keeps solved from either side', ab.progress.A1.solved && ab.progress.B1.solved);
+  expect('merge takes the higher attempt count', ab.progress.A1.attempts === 2 && ab.progress.A1.hints === 1);
+  expect('merge keeps the furthest review date', ab.progress.A1.due === 100 && ab.progress.A1.stage === 1);
+  expect('merge keeps the best solve time', ab.progress.A1.seconds === 40);
+  expect('merge keeps a flag set on one side only', ab.progress.A2.solution === true);
+  expect('merge unions the journal and drops the duplicate', ab.journal.length === 3);
+  expect('merge sorts the journal newest first', ab.journal[0].ts === 300 && ab.journal[2].ts === 100);
+  expect('merge unions exams', ab.exams.length === 2);
+  expect('merge keeps a correct quiz answer', ab.quiz.A1.correct === true && ba.quiz.A1.correct === true);
+  expect('merge unions cards read', ab.read.A && ab.read.B);
+  expect('merge keeps a non-empty draft over an empty one', ab.drafts.A3 === 'SELECT 1' && ab.drafts.B2 === 'SELECT 2');
+  expect('merge order does not change progress', JSON.stringify(ab.progress) === JSON.stringify(ba.progress));
+  expect('merge order does not change the journal', JSON.stringify(ab.journal) === JSON.stringify(ba.journal));
+  expect('local device keeps its own theme', ab.theme === 'dark' && ba.theme === 'light');
+  expect('merge is idempotent', JSON.stringify(m(ab, ab).progress) === JSON.stringify(ab.progress));
+  expect('merge survives null and empty input', m(null, null).journal.length === 0 && m(A, null).progress.A1.solved && m(null, B).progress.B1.solved);
+  expect('merge caps the journal at 600', m({journal: Array.from({length:800}, (_,i)=>({ts:i,kind:'wrong',ex:'X'+i}))}, {}).journal.length === 600);
+  expect('merge never loses a solved exercise', Object.keys(ab.progress).filter(k=>ab.progress[k].solved).length === 2);
+  expect('state shape guard accepts real state', api.looksLikeState(A));
+  expect('state shape guard rejects junk', !api.looksLikeState({hello:1}) && !api.looksLikeState(null) && !api.looksLikeState([]));
 
   console.log(fail ? `\n${fail} FAILURE(S)` : '\nALL CHECKS PASSED');
   process.exit(fail ? 1 : 0);

@@ -248,6 +248,13 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
 .opts button:disabled:not(.right):not(.wrongpick){opacity:.55}
 .why{margin-top:6px;font-size:.88rem;color:var(--muted);border-right:3px solid var(--accent);padding-right:.6rem}
 
+/* sync */
+.synccard{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:14px}
+.synccard .txt{flex:1;min-width:200px}
+.synccard .dot{width:9px;height:9px;border-radius:50%;background:var(--line);display:inline-block;margin-left:6px}
+.synccard .dot.on{background:var(--ok)}
+.synccard .dot.syncing{background:var(--warn)}
+.synccard .dot.error{background:var(--bad)}
 /* path */
 .pathtop{margin-bottom:14px}
 .pathtop .row{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
@@ -410,6 +417,7 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
 
   <!-- JOURNAL -->
   <section class="panel" id="panel-journal" hidden>
+    <div class="synccard card" id="syncCard"></div>
     <div class="stats" id="stats"></div>
     <div class="topicstats" id="topicstats"></div>
     <div class="toolbar" style="margin:0 0 12px">
@@ -445,6 +453,8 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
 <div class="banner" id="banner"></div>
 
 <script src="sql-asm.js"></script>
+<script src="sync-config.js"></script><!--SYNC-->
+<script src="sync.js"></script><!--SYNC-->
 <script>
 //<BANK>
 const DATA = {
@@ -1117,6 +1127,68 @@ function translateError(msg){
   if (/incomplete input/i.test(m)) return 'השאילתה לא הושלמה: סוגריים או גרשיים לא נסגרו.';
   return m;
 }
+// ---------- state merge ----------
+// Merging two copies of the state (this device and the cloud, or an imported backup).
+// Never destructive: progress only moves forward, journals are unioned. Order of arguments
+// does not change the result, so two devices converge no matter who syncs first.
+function mergeState(a, b){
+  a = a || {}; b = b || {};
+  const out = {};
+  const num = (x, y, pick) => { const v = [x, y].filter(n => typeof n === 'number'); return v.length ? pick(...v) : undefined; };
+  // keys are sorted so that both devices serialise to exactly the same string.
+  // without this the two sides keep rewriting an identical state and sync ping-pongs.
+  const keys = (x, y) => [...new Set([...Object.keys(x || {}), ...Object.keys(y || {})])].sort();
+
+  // progress: solved stays solved, counters take the higher value, best time wins
+  out.progress = {};
+  for (const id of keys(a.progress, b.progress)){
+    const x = (a.progress || {})[id] || {}, y = (b.progress || {})[id] || {};
+    const p = {
+      attempts: num(x.attempts, y.attempts, Math.max) || 0,
+      solved: !!(x.solved || y.solved),
+      hints: num(x.hints, y.hints, Math.max) || 0,
+      solution: !!(x.solution || y.solution)
+    };
+    const stage = num(x.stage, y.stage, Math.max); if (stage !== undefined) p.stage = stage;
+    const due = num(x.due, y.due, Math.max); if (due !== undefined) p.due = due;      // further out = more reviews done
+    const secs = num(x.seconds, y.seconds, Math.min); if (secs !== undefined) p.seconds = secs;
+    out.progress[id] = p;
+  }
+
+  // journal and exams: union by identity, newest first, same caps as the live app
+  const union = (x, y, key, cap) => {
+    const seen = new Map();
+    for (const e of [...(Array.isArray(x) ? x : []), ...(Array.isArray(y) ? y : [])]) if (e && typeof e === 'object') seen.set(key(e), e);
+    const all = [...seen.values()].sort((m, n) => (n.ts || 0) - (m.ts || 0));
+    return all.slice(0, cap);
+  };
+  out.journal = union(a.journal, b.journal, e => [e.ts, e.kind, e.ex, e.msg].join('|'), 600);
+  out.exams = union(a.exams, b.exams, e => String(e.ts), 50);
+
+  // quiz: a question answered correctly anywhere stays correct
+  out.quiz = {};
+  for (const k of keys(a.quiz, b.quiz)){
+    const x = (a.quiz || {})[k], y = (b.quiz || {})[k];
+    if (x && y) out.quiz[k] = (x.correct && !y.correct) ? x : (y.correct && !x.correct) ? y : ((y.ts || 0) >= (x.ts || 0) ? y : x);
+    else out.quiz[k] = x || y;
+  }
+
+  // theory cards read: either side counts
+  out.read = {};
+  for (const k of keys(a.read, b.read)) out.read[k] = !!((a.read || {})[k] || (b.read || {})[k]);
+
+  // unsent editor drafts: keep whatever is not empty, this device first
+  out.drafts = {};
+  for (const k of keys(a.drafts, b.drafts)){
+    const v = (a.drafts || {})[k] || (b.drafts || {})[k] || '';
+    if (v) out.drafts[k] = v;
+  }
+
+  // device preferences: this device decides
+  for (const k of ['theme', 'lastExercise', 'examScope', 'recallDraft']) if (a[k] !== undefined || b[k] !== undefined) out[k] = a[k] !== undefined ? a[k] : b[k];
+  return out;
+}
+function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.progress === 'object' && o.progress !== null && Array.isArray(o.journal); }
 //</BANK>
 
 // ---------- app ----------
@@ -1137,8 +1209,17 @@ function translateError(msg){
     try { const raw = localStorage.getItem(STORE_KEY); if (raw) return Object.assign({progress:{}, journal:[], quiz:{}}, JSON.parse(raw)); } catch(e){}
     return {progress:{}, journal:[], quiz:{}};
   }
-  function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} }
+  function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} try { if (window.TrainerSync && window.TrainerSync.changed) window.TrainerSync.changed(); } catch(e){} }
   function prog(id){ return state.progress[id] || (state.progress[id] = {attempts:0, solved:false, hints:0, solution:false}); }
+  // replace the whole state and redraw everything that reads it
+  function applyState(next){
+    state = next; hintsShown = {};
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){}
+    applyTheme(); renderSchema(); renderFilters(); renderList(); renderProgress(); renderPath();
+    if (!$('#panel-journal').hidden) renderJournal();
+    if (!$('#panel-session').hidden) renderSessions();
+    openExercise(ex(state.lastExercise) ? state.lastExercise : current);
+  }
   function ex(id){ return EXERCISES.find(e=>e.id===id); }
   function topic(k){ return TOPICS.find(t=>t.key===k) || (k==='X' ? {key:'X',name:'השלמה',full:'השלמות'} : k==='W' ? {key:'W',name:'חלונות',full:'פונקציות חלון'} : null); }
   function banner(msg){ const b=$('#banner'); b.textContent=msg; b.classList.add('show'); clearTimeout(banner.t); banner.t=setTimeout(()=>b.classList.remove('show'),2600); }
@@ -1584,7 +1665,24 @@ function translateError(msg){
   }
 
   // journal
+  function renderSync(){
+    const el=$('#syncCard'); if (!el) return;
+    const S=window.TrainerSync;
+    if (!S || !S.configured){
+      el.innerHTML=`<div class="txt"><b>סנכרון בין מכשירים: כבוי</b><div class="muted tiny">ההתקדמות נשמרת רק בדפדפן הזה. כדי לסנכרן בין המחשב לטלפון, מלא את sync-config.js לפי ההוראות שבתוכו. עד אז, גיבוי ידני הוא הדרך להעביר התקדמות.</div></div>`;
+      return;
+    }
+    const st=S.status, cls={on:'on',syncing:'syncing',loading:'syncing',error:'error'}[st]||'';
+    const label={on:'מסונכרן',syncing:'מסנכרן',loading:'טוען',error:'שגיאת סנכרון','signed-out':'לא מחובר'}[st]||st;
+    el.innerHTML=`<div class="txt"><b><span class="dot ${cls}"></span>${esc(label)}</b><div class="muted tiny">${esc(S.detail||'')}</div></div>
+      ${S.user?`<button class="small" type="button" id="syncNow">סנכרן עכשיו</button><button class="small ghost" type="button" id="syncOut">התנתק</button>`:`<button class="small primary" type="button" id="syncIn">התחבר עם גוגל</button>`}`;
+    const i=$('#syncIn'); if (i) i.onclick=()=>S.signIn();
+    const n=$('#syncNow'); if (n) n.onclick=()=>S.syncNow();
+    const o=$('#syncOut'); if (o) o.onclick=()=>S.signOut();
+  }
+
   function renderJournal(){
+    renderSync();
     const j=state.journal;
     const solved=EXERCISES.filter(e=>prog(e.id).solved).length;
     const wrong=j.filter(x=>x.kind==='wrong').length, errs=j.filter(x=>x.kind==='sql_error').length, sols=j.filter(x=>x.kind==='solution').length, qz=j.filter(x=>x.kind==='quiz').length;
@@ -1633,11 +1731,12 @@ function translateError(msg){
     rd.onload=()=>{
       let obj=null; try { obj=JSON.parse(rd.result); } catch(e){}
       ev.target.value='';
-      if (!obj || typeof obj!=='object' || !obj.progress || !Array.isArray(obj.journal)){ banner('זה לא קובץ גיבוי של המאמן'); return; }
+      if (!looksLikeState(obj)){ banner('זה לא קובץ גיבוי של המאמן'); return; }
       const c=$('#importConfirm'); c.hidden=false;
       const solved=Object.values(obj.progress).filter(p=>p&&p.solved).length;
-      c.innerHTML=`<div class="confirm"><span>לייבא גיבוי עם ${solved} תרגילים פתורים ו-${obj.journal.length} רשומות יומן? זה מחליף את מה שיש כאן עכשיו.</span><button class="small" type="button" id="impYes">כן, החלף</button><button class="small ghost" type="button" id="impNo">בטל</button></div>`;
-      $('#impYes').onclick=()=>{ state=Object.assign({progress:{},journal:[],quiz:{}}, obj); save(); hintsShown={}; c.hidden=true; applyTheme(); renderJournal(); renderProgress(); renderSchema(); openExercise(state.lastExercise||EXERCISES[0].id); banner('הגיבוי יובא'); };
+      const after=mergeState(state, obj), afterSolved=Object.values(after.progress).filter(p=>p&&p.solved).length;
+      c.innerHTML=`<div class="confirm"><span>בקובץ יש ${solved} תרגילים פתורים ו-${obj.journal.length} רשומות יומן. אחרי מיזוג עם מה שכאן יהיו ${afterSolved} תרגילים פתורים ו-${after.journal.length} רשומות. שום התקדמות לא נמחקת.</span><button class="small" type="button" id="impYes">מזג</button><button class="small ghost" type="button" id="impNo">בטל</button></div>`;
+      $('#impYes').onclick=()=>{ applyState(mergeState(state, obj)); save(); c.hidden=true; banner('הגיבוי מוזג עם מה שכבר היה כאן'); };
       $('#impNo').onclick=()=>{ c.hidden=true; };
     };
     rd.readAsText(f);
@@ -1645,7 +1744,11 @@ function translateError(msg){
   $('#resetBtn').onclick=()=>{
     const c=$('#resetConfirm'); c.hidden=false;
     c.innerHTML=`<div class="confirm"><span>למחוק את כל ההתקדמות, שאלות הידע והיומן? אין שחזור.</span><button class="small" type="button" id="resetYes">כן, מחק</button><button class="small ghost" type="button" id="resetNo">בטל</button></div>`;
-    $('#resetYes').onclick=()=>{ const theme=state.theme; state={progress:{},journal:[],quiz:{},theme}; save(); hintsShown={}; c.hidden=true; renderJournal(); renderProgress(); renderSchema(); openExercise(EXERCISES[0].id); banner('אופס'); };
+    $('#resetYes').onclick=()=>{
+      const theme=state.theme; const fresh={progress:{},journal:[],quiz:{},read:{},theme};
+      try { if (window.TrainerSync && window.TrainerSync.overwrite) window.TrainerSync.overwrite(fresh); } catch(e){}
+      applyState(fresh); c.hidden=true; renderJournal(); banner('אופס');
+    };
     $('#resetNo').onclick=()=>{ c.hidden=true; };
   };
 
@@ -1804,6 +1907,18 @@ function translateError(msg){
     if (ios && !standalone && !dismissed && location.protocol.startsWith('http')) $('#installTip').classList.add('show');
     $('#installClose').onclick=()=>{ $('#installTip').classList.remove('show'); try { localStorage.setItem('sqltrainer.installTip','1'); } catch(e){} };
   })();
+
+  // cross-device sync, if sync-config.js has been filled in
+  try {
+    if (window.TrainerSync){
+      window.TrainerSync.onChange(()=>{ if (!$('#panel-journal').hidden) renderSync(); });
+      window.TrainerSync.init({
+        getState: ()=>state,
+        setState: s=>{ applyState(s); },
+        merge: (a,b)=>mergeState(a,b)
+      });
+    }
+  } catch(e){}
 
   // boot
   applyTheme();

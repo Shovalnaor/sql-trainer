@@ -25,7 +25,9 @@
 - **מצב מבחן.** 10 תרגילים אקראיים ב-30 דקות, בלי רמזים ובלי פתרונות. הציון נשמר ביומן.
 - **חזרה שקטה.** תרגיל שנפתר חוזר לבחירה של השליפה היומית אחרי 3, 7, 21 ו-60 ימים. בלי מונים, בלי תזכורות.
 - **עורך.** הדגשת תחביר בלי ספרייה, ושורת לחצנים של מילות מפתח, טבלאות ועמודות כדי לא להקליד SQL על מקלדת טלפון.
-- **יומן טעויות.** כל ניסיון שגוי נשמר עם השאילתה, סטטיסטיקה לפי נושא, ימי רצף, ייצוא כ-CSV, וגיבוי JSON להורדה ולייבוא.
+- **יומן טעויות.** כל ניסיון שגוי נשמר עם השאילתה, סטטיסטיקה לפי נושא, ימי רצף, ייצוא כ-CSV, וגיבוי JSON להורדה ולייבוא ממזג.
+- **סנכרון אופציונלי** בין מכשירים דרך Firebase, עם מיזוג שלא דורס התקדמות.
+- **גרסת MySQL** של אותם נתונים, לתרגול מקביל ב-Workbench.
 - **אייפון.** מותאם למסך צר, ניתן להוספה למסך הבית כאפליקציה, ועובד בלי אינטרנט.
 
 ## הנתונים
@@ -37,9 +39,39 @@
 - `index.html`: כל האפליקציה בקובץ אחד (נתונים, תרגילים, תיאוריה, ממשק).
 - `sql-asm.js`: [sql.js](https://github.com/sql-js/sql.js), SQLite שקומפל ל-JavaScript. מצורף כדי שהאתר יעבוד בלי תלות ברשת.
 - `sw.js` ו-`manifest.webmanifest`: עבודה לא מקוונת והתקנה למסך הבית.
+- `sync.js`, `sync-config.js`, `firestore.rules`: סנכרון אופציונלי בין מכשירים.
+- `mysql/`: אותה סכמה ואותם נתונים כסקריפט MySQL 8, לתרגול ב-Workbench.
 - `tests/verify.js`: מריץ כל שאילתת ייחוס, כל דוגמה חיה וכל שאלת ידע מול המנוע, ובודק את הבודק הסטטי על שאילתות ידועות. רץ ב-GitHub Actions בכל push.
 
 ההתקדמות נשמרת ב-localStorage של הדפדפן בלבד. כפתור הגיבוי ביומן מעתיק את כל המצב כ-JSON.
+
+## סנכרון בין מכשירים (אופציונלי)
+
+כברירת מחדל ההתקדמות נשמרת ב-`localStorage` של הדפדפן: מהר, פרטי, עובד לא מקוון, ולא עובר בין מכשירים. יש שתי דרכים להעביר אותה.
+
+**ידנית, בלי כלום:** ביומן יש "הורד גיבוי" ו"ייבוא גיבוי". הייבוא **ממזג** ולא דורס, כך שאפשר לייבא לכל מכשיר בלי לאבד מה שכבר יש בו.
+
+**אוטומטית, עם Firebase:** מלא את `sync-config.js` והאתר יסנכרן את הכל מול מסמך אחד לכל משתמש. ההוראות המלאות נמצאות בתוך הקובץ. בתמצית:
+
+1. פרויקט חדש ב-Firebase Console, בלי Analytics.
+2. Firestore Database, במצב Production.
+3. Authentication, להפעיל Google, ולהוסיף את דומיין ה-Pages ל-Authorized domains.
+4. להעתיק את ה-config מהגדרות הפרויקט לתוך `sync-config.js`.
+5. להדביק את `firestore.rules` בלשונית Rules ולפרסם.
+
+הערכים ב-`sync-config.js` הם מזהים ולא סודות: גוגל מתעדת את מפתח ה-API של הלקוח כבטוח להטמעה בקוד צד-לקוח. מה שמגן על הנתונים הוא כללי האבטחה, שמתירים לכל משתמש לגעת רק במסמך שלו.
+
+**המיזוג לא מוחק.** תרגיל שנפתר באחד הצדדים נשאר פתור, היומנים מתאחדים, ושאלה שנענתה נכון נשארת נכונה. התוצאה זהה בייט-בייט לא משנה איזה מכשיר סונכרן ראשון, מה שמונע לולאת כתיבות בין שני מכשירים. יש לכך בדיקות ב-`tests/verify.js`.
+
+## תרגול ב-MySQL Workbench
+
+המנוע באתר הוא SQLite, והוא סלחן יותר מ-MySQL. בתיקיית `mysql/` יש את אותה סכמה ואותם נתונים בדיוק:
+
+- `schema.sql`: יוצר את מסד הנתונים `sql_trainer`, ארבע הטבלאות, 61 השורות והמפתחות הזרים. מפעיל גם את `ONLY_FULL_GROUP_BY`.
+- `exercises.sql`: כל השאלות כהערות, בלי פתרונות, לפי סדר הנושאים.
+- `build.js`: מייצר את שניהם מחדש מתוך `index.html`, כדי ששתי הגרסאות לא יתפצלו.
+
+ב-Workbench: File, Open SQL Script, להריץ את `schema.sql`, ואז לעבוד על `exercises.sql`. שימו לב ש-`condition` ו-`status` הן מילים שמורות ב-MySQL ודורשות גרשיים אחוריים, הבדל שהמנוע בדפדפן לא יתפוס.
 
 ## הרצה מקומית
 
@@ -57,4 +89,4 @@ MIT. ראה `LICENSE`. רישיון sql.js ב-`LICENSE-sql.js.txt`.
 
 ## English
 
-Hebrew-language interactive SQL trainer that runs entirely in the browser: a real SQLite engine (sql.js) executes your query and compares the result set to the expected one. 58 exercises across nine topics (up to analyst-interview level: subqueries, CTEs, EXISTS, window functions), graded hints with the reference solution locked until three attempts, a static checker that flags queries SQLite accepts but MySQL rejects (partial GROUP BY, `= NULL`, aggregates in WHERE), theory cards with runnable examples and knowledge checks, study-block timers, and an error journal with CSV export. Installable on iOS and works offline. Fictitious dataset, no backend, no tracking.
+Hebrew-language interactive SQL trainer that runs entirely in the browser: a real SQLite engine (sql.js) executes your query and compares the result set to the expected one. 58 exercises across nine topics (up to analyst-interview level: subqueries, CTEs, EXISTS, window functions), graded hints with the reference solution locked until three attempts, a static checker that flags queries SQLite accepts but MySQL rejects (partial GROUP BY, `= NULL`, aggregates in WHERE), theory cards with runnable examples and knowledge checks, study-block timers, and an error journal with CSV export. Optional cross-device sync via Firebase with a non-destructive merge, plus a MySQL 8 script of the same dataset for Workbench practice. Installable on iOS and works offline. Fictitious dataset, no backend, no tracking.
