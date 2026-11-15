@@ -19,10 +19,10 @@
 // הערכים כאן הם מזהים ולא סודות: גוגל מתעדת את מפתח ה-API של הלקוח כבטוח
 // להטמעה בקוד צד-לקוח. מה שמגן על הנתונים הוא כללי האבטחה.
 window.SYNC_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyAu7hjhXT1NiquQxAfsatJ4cvvxSV3Yo4Q",
+  authDomain: "sqlproject-9cab1.firebaseapp.com",
+  projectId: "sqlproject-9cab1",
+  storageBucket: "sqlproject-9cab1.firebasestorage.app",
+  messagingSenderId: "465661130313",
+  appId: "1:465661130313:web:3e28bd85ec329c9352f198"
 };
