@@ -14,12 +14,13 @@
 
 ## מה יש בפנים
 
-- **מסלול מודרך.** תשעה שלבים בסדר ההרצאות ואז רמת ראיון. כל שלב נסגר אחרי קריאת הכרטיס, 3/3 בשאלות הידע וכל התרגילים. כפתור "המשך מאיפה שעצרת" פותח את הפריט הבא בדיוק. שום דבר לא נעול.
-- **58 תרגילים** בתשעה נושאים: SELECT/WHERE, אגרגציה ו-GROUP BY, HAVING, DISTINCT, UNION, JOIN/LEFT JOIN/NULL, IN, דוחות משולבים, ונושא ברמת ראיון אנליסט: תת-שאילתות, CTE, EXISTS, פונקציות חלון (ROW_NUMBER, DENSE_RANK, LAG, סכום רץ), אחוז מסך הכל, זיהוי כפילויות והפרשי תאריכים.
+- **מסלול מודרך.** שלושה עשר שלבים בסדר ההרצאות, מאלגברה רלציונית ועד רמת ראיון. כל שלב נסגר אחרי קריאת הכרטיס, 3/3 בשאלות הידע וכל התרגילים. כפתור "המשך מאיפה שעצרת" פותח את הפריט הבא בדיוק. שום דבר לא נעול.
+- **79 תרגילים** בעשרה נושאים ובמעבדה: SELECT/WHERE, אגרגציה ו-GROUP BY, HAVING, DISTINCT, UNION, JOIN/LEFT JOIN/NULL, IN, דוחות משולבים, קבוצות וצירופים (INTERSECT, EXCEPT, RIGHT ו-FULL JOIN, USING, NATURAL JOIN, SOME ו-ALL), ונושא ברמת ראיון אנליסט: תת-שאילתות, CTE, EXISTS, פונקציות חלון, אחוז מסך הכל, זיהוי כפילויות והפרשי תאריכים.
 - **בדיקה לפי תוצאה, לא לפי טקסט.** כל ניסוח נכון מתקבל. כשהתוצאה לא תואמת, המשוב מכוון: מספר שורות, שורות חסרות או מיותרות, סדר, עמודות.
 - **רמזים מדורגים.** הפתרון נעול עד שלושה ניסיונות, ופתיחתו נרשמת ביומן.
 - **בודק סטטי ל-MySQL.** המנוע הוא SQLite, שסלחן יותר. המאמן מזהיר על GROUP BY חלקי (ONLY_FULL_GROUP_BY), השוואה ל-NULL עם `=`, אגרגציה בתוך WHERE, וטבלה נגזרת בלי כינוי.
-- **תיאוריה עם דוגמאות חיות.** עשרה כרטיסים: תחביר, כללים, דוגמאות שרצות על המנוע בלחיצה, ושלוש שאלות ידע עם הסבר לכל כרטיס.
+- **מעבדה.** לשונית נפרדת שבה מותר לשנות את המסד: INSERT, UPDATE, DELETE, CREATE TABLE עם מפתחות ואילוצים, ALTER, DROP, תצוגות ואינדקסים. כל הרצה מתחילה ממסד נקי, והבדיקה מריצה שאילתת ביקורת על המסד שנוצר, כך שכל ניסוח תקין מתקבל.
+- **תיאוריה עם דוגמאות חיות.** ארבעה עשר כרטיסים: תחביר, כללים, דוגמאות שרצות על המנוע בלחיצה, ושלוש שאלות ידע עם הסבר לכל כרטיס.
 - **סדר ביצוע.** כפתור שמפרק את השאילתה שלך לשלבים לפי סדר הביצוע הלוגי (FROM, JOIN, WHERE, GROUP BY, HAVING, חלון, SELECT, ORDER BY, LIMIT) עם הסבר לכל שלב.
 - **בלוקי זמן.** טיימר לבלוק לימוד ארוך (תיאוריה, שחזור מהזיכרון, תרגול, רישום), בלוק תרגול בלבד, ושליפה יומית של 10 דקות שבוחרת תרגיל מהנושא החלש ביותר.
 - **מצב מבחן.** 10 תרגילים אקראיים ב-30 דקות, בלי רמזים ובלי פתרונות. הציון נשמר ביומן.
@@ -40,7 +41,7 @@
 - `sql-asm.js`: [sql.js](https://github.com/sql-js/sql.js), SQLite שקומפל ל-JavaScript. מצורף כדי שהאתר יעבוד בלי תלות ברשת.
 - `sw.js` ו-`manifest.webmanifest`: עבודה לא מקוונת והתקנה למסך הבית.
 - `sync.js`, `sync-config.js`, `firestore.rules`: סנכרון אופציונלי בין מכשירים.
-- `mysql/`: אותה סכמה ואותם נתונים כסקריפט MySQL 8, לתרגול ב-Workbench.
+- `mysql/`: אותה סכמה ואותם נתונים כסקריפט MySQL 8, כולל מסד המעבדה, לתרגול ב-Workbench.
 - `tests/verify.js`: מריץ כל שאילתת ייחוס, כל דוגמה חיה וכל שאלת ידע מול המנוע, ובודק את הבודק הסטטי על שאילתות ידועות. רץ ב-GitHub Actions בכל push.
 
 ההתקדמות נשמרת ב-localStorage של הדפדפן בלבד. כפתור הגיבוי ביומן מעתיק את כל המצב כ-JSON.
@@ -68,7 +69,8 @@
 המנוע באתר הוא SQLite, והוא סלחן יותר מ-MySQL. בתיקיית `mysql/` יש את אותה סכמה ואותם נתונים בדיוק:
 
 - `schema.sql`: יוצר את מסד הנתונים `sql_trainer`, ארבע הטבלאות, 61 השורות והמפתחות הזרים. מפעיל גם את `ONLY_FULL_GROUP_BY`.
-- `exercises.sql`: כל השאלות כהערות, בלי פתרונות, לפי סדר הנושאים.
+- `exercises.sql`: כל שאלות התרגול כהערות, בלי פתרונות, לפי סדר הנושאים.
+- `lab.sql`: מסד המעבדה ושאלות ה-DDL וה-DML.
 - `build.js`: מייצר את שניהם מחדש מתוך `index.html`, כדי ששתי הגרסאות לא יתפצלו.
 
 ב-Workbench: File, Open SQL Script, להריץ את `schema.sql`, ואז לעבוד על `exercises.sql`. שימו לב ש-`condition` ו-`status` הן מילים שמורות ב-MySQL ודורשות גרשיים אחוריים, הבדל שהמנוע בדפדפן לא יתפוס.
@@ -89,4 +91,4 @@ MIT. ראה `LICENSE`. רישיון sql.js ב-`LICENSE-sql.js.txt`.
 
 ## English
 
-Hebrew-language interactive SQL trainer that runs entirely in the browser: a real SQLite engine (sql.js) executes your query and compares the result set to the expected one. 58 exercises across nine topics (up to analyst-interview level: subqueries, CTEs, EXISTS, window functions), graded hints with the reference solution locked until three attempts, a static checker that flags queries SQLite accepts but MySQL rejects (partial GROUP BY, `= NULL`, aggregates in WHERE), theory cards with runnable examples and knowledge checks, study-block timers, and an error journal with CSV export. Optional cross-device sync via Firebase with a non-destructive merge, plus a MySQL 8 script of the same dataset for Workbench practice. Installable on iOS and works offline. Fictitious dataset, no backend, no tracking.
+Hebrew-language interactive SQL trainer that runs entirely in the browser: a real SQLite engine (sql.js) executes your query and compares the result set to the expected one. 79 exercises across ten topics plus a write-mode lab for DDL and DML (set operations, outer joins, subqueries, CTEs, EXISTS, window functions, keys and constraints, views, indexes), graded hints with the reference solution locked until three attempts, a static checker that flags queries SQLite accepts but MySQL rejects (partial GROUP BY, `= NULL`, aggregates in WHERE), theory cards with runnable examples and knowledge checks, study-block timers, and an error journal with CSV export. Optional cross-device sync via Firebase with a non-destructive merge, plus a MySQL 8 script of the same dataset for Workbench practice. Installable on iOS and works offline. Fictitious dataset, no backend, no tracking.

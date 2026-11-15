@@ -6,7 +6,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const bank = html.split('//<BANK>')[1].split('//</BANK>')[0];
-const { DATA, EXERCISES, TOPICS } = new Function(bank + '\nreturn {DATA,EXERCISES,TOPICS};')();
+const { DATA, EXERCISES, TOPICS, LAB, LAB_SCHEMA } = new Function(bank + '\nreturn {DATA,EXERCISES,TOPICS,LAB,LAB_SCHEMA};')();
 
 const bt = s => '`' + s + '`';
 const lit = s => "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "''") + "'";
@@ -76,4 +76,28 @@ for (const t of TOPICS) {
   e.push('');
 }
 fs.writeFileSync(path.join(__dirname, 'exercises.sql'), e.join('\n'), 'utf8');
-console.log('wrote mysql/schema.sql and mysql/exercises.sql');
+// the lab database, for practising DDL and DML in Workbench
+const l = [];
+l.push('-- מאמן SQL: מסד המעבדה, לתרגול DDL ו-DML ב-MySQL Workbench.');
+l.push('-- נוצר אוטומטית מ-index.html. אל תערוך ידנית, הרץ: node mysql/build.js');
+l.push('--');
+l.push('-- הרץ את הקובץ הזה מחדש לפני כל תרגיל, כדי להתחיל ממסד נקי,');
+l.push('-- בדיוק כמו שהמעבדה באתר עושה בכל הרצה.');
+l.push('');
+l.push('DROP DATABASE IF EXISTS sql_trainer_lab;');
+l.push('CREATE DATABASE sql_trainer_lab CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;');
+l.push('USE sql_trainer_lab;');
+l.push('');
+for (const stmt of LAB_SCHEMA) {
+  // SQLite accepts INTEGER PRIMARY KEY and bare TEXT; MySQL wants INT and a length
+  l.push(stmt.replace(/INTEGER PRIMARY KEY/g, 'INT PRIMARY KEY').replace(/\bTEXT\b/g, 'VARCHAR(100)').trim() + ';');
+  l.push('');
+}
+l.push('-- התרגילים. אין כאן פתרונות: הם באתר, אחרי שלושה ניסיונות.');
+l.push('');
+for (const x of LAB) {
+  l.push('-- ' + x.id + '  [' + LEVELS[x.level] + ']  ' + x.q);
+  l.push('');
+}
+fs.writeFileSync(path.join(__dirname, 'lab.sql'), l.join('\n'), 'utf8');
+console.log('wrote mysql/schema.sql, mysql/exercises.sql and mysql/lab.sql');

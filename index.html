@@ -248,6 +248,16 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
 .opts button:disabled:not(.right):not(.wrongpick){opacity:.55}
 .why{margin-top:6px;font-size:.88rem;color:var(--muted);border-right:3px solid var(--accent);padding-right:.6rem}
 
+/* lab */
+.labschema{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.labschema .t{border:1px solid var(--line);border-radius:8px;padding:.4rem .7rem;background:var(--code-bg);font-family:var(--font-mono);font-size:.78rem;direction:ltr;text-align:left}
+.labschema .t b{display:block;font-size:.85rem;color:var(--accent)}
+.labchips{display:flex;flex-wrap:wrap;gap:6px}
+.labchips button{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:.25rem .7rem;font-size:.85rem}
+.labchips button[aria-current="true"]{background:var(--accent-soft);border-color:var(--accent);font-weight:700}
+.labchips .dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:0 0 auto}
+.labchips .dot.solved{background:var(--ok)}
+.labchips .dot.tried{background:var(--warn)}
 /* sync */
 .synccard{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:14px}
 .synccard .txt{flex:1;min-width:200px}
@@ -342,6 +352,7 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
   <nav class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="path">מסלול</button>
     <button role="tab" data-tab="practice" aria-selected="true">תרגול</button>
+    <button role="tab" data-tab="lab">מעבדה</button>
     <button role="tab" data-tab="theory">תיאוריה</button>
     <button role="tab" data-tab="session">סשן</button>
     <button role="tab" data-tab="journal">יומן</button>
@@ -390,6 +401,46 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
         <div id="feedback"></div>
         <div class="meta" id="resmeta"></div>
         <div class="tablewrap" id="restable"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LAB -->
+  <section class="panel" id="panel-lab" hidden>
+    <div class="card" style="margin-bottom:14px">
+      <div class="eyebrow">מעבדה · DDL ו-DML</div>
+      <p style="margin:6px 0 4px"><b>כאן מותר לשנות את המסד.</b> הכנסה, עדכון, מחיקה, יצירת טבלאות, אילוצים, תצוגות ואינדקסים.</p>
+      <p class="muted tiny" style="max-width:72ch">כל הרצה מתחילה ממסד נקי, אז אפשר לנסות שוב בלי שגיאות של "הטבלה כבר קיימת". הבדיקה מריצה שאילתת ביקורת על המסד שיצרת, ולכן כל ניסוח תקין מתקבל. מפתחות זרים נאכפים.</p>
+      <div class="labschema" id="labSchema"></div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div class="labchips" id="labChips"></div>
+    </div>
+    <div class="main">
+      <div class="card">
+        <div class="qhead" id="labHead"></div>
+        <p class="question" id="labQ"></p>
+        <p class="note" id="labNote" hidden></p>
+      </div>
+      <div class="card">
+        <div class="tokbar" id="labTok" aria-label="פקודות"></div>
+        <div class="edwrap"><pre class="hl" aria-hidden="true"></pre><textarea class="sql" id="labEditor" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" placeholder="INSERT INTO ..."></textarea></div>
+        <div class="toolbar sticky">
+          <button class="primary" id="labRunBtn">הרץ ובדוק <span class="kbd">Ctrl+Enter</span></button>
+          <button id="labHintBtn">רמז</button>
+          <button id="labSolBtn" class="ghost">פתרון</button>
+          <button id="labClearBtn" class="ghost">נקה</button>
+          <span class="spacer"></span>
+          <button id="labPrev" class="ghost small">הקודם</button>
+          <button id="labNext" class="ghost small">הבא</button>
+        </div>
+        <div class="hints" id="labHints"></div>
+        <div class="solution" id="labSolution" hidden></div>
+      </div>
+      <div class="card" id="labResultCard" hidden>
+        <div id="labFeedback"></div>
+        <div class="meta" id="labMeta"></div>
+        <div class="tablewrap" id="labTable"></div>
       </div>
     </div>
   </section>
@@ -556,6 +607,7 @@ const TOPICS = [
   {key:'F', name:'JOIN', full:'JOIN, LEFT JOIN ו-NULL', pages:'עמ׳ 70–72'},
   {key:'G', name:'IN', full:'IN ותת-שאילתות', pages:'עמ׳ 93'},
   {key:'H', name:'דוח משולב', full:'שאלות ראיון: כמה נושאים בשאילתה אחת', pages:'מעבר להרצאה'},
+  {key:'J', name:'קבוצות וצירופים', full:'INTERSECT, RIGHT ו-FULL JOIN, USING, SOME ו-ALL', pages:'עמ׳ 58–59, 61–71, 91–93'},
   {key:'I', name:'ראיון אנליסט', full:'תת-שאילתות, CTE, EXISTS ופונקציות חלון', pages:'מעבר לסילבוס'}
 ];
 
@@ -710,6 +762,41 @@ const EXERCISES = [
    sql:"SELECT s.supplier_name, COUNT(*) AS closed, AVG(r.days_to_close) AS avg_days FROM returns r JOIN orders o ON r.order_id = o.order_id JOIN suppliers s ON o.supplier_id = s.supplier_id WHERE r.status = 'סופית' GROUP BY s.supplier_id, s.supplier_name HAVING COUNT(*) >= 2 ORDER BY avg_days",
    hints:['שלוש טבלאות, WHERE על סטטוס ההחזרה, GROUP BY ספק, HAVING על הספירה, ORDER BY על הממוצע.','זה כל הסילבוס בשאילתה אחת. אם היא יוצאת לך נקי, אתה מוכן לשאלת ה-SQL בראיון.']},
 
+  // J — exam topics the course teaches that the first version skipped
+  {id:'J1', topic:'J', level:2, q:'אילו מחוזות מופיעים גם בהזמנה שסופקה וגם בהזמנה שלא סופקה? השתמש ב-INTERSECT.',
+   sql:"SELECT district FROM orders WHERE status = 'סופקה' INTERSECT SELECT district FROM orders WHERE status <> 'סופקה'",
+   hints:['שתי שאילתות SELECT עם עמודה אחת, וביניהן INTERSECT.','INTERSECT מחזיר רק ערכים שמופיעים בשתי התוצאות, ומסיר כפילויות כמו UNION.'],
+   note:'INTERSECT הוא אופרטור החיתוך מהאלגברה הרלציונית. בהרצאה הוא מופיע גם כזהות: R1 ∩ R2 = R1 − (R1 − R2).'},
+  {id:'J2', topic:'J', level:2, q:'מזהי המוצרים שהוזמנו גם כ"חדש" וגם כ"מחודש", עם INTERSECT.',
+   sql:"SELECT product_id FROM orders WHERE condition = 'חדש' INTERSECT SELECT product_id FROM orders WHERE condition = 'מחודש'",
+   hints:['אותו דפוס: שני SELECT על אותה טבלה, תנאי שונה בכל אחד.','אפשר גם עם IN או JOIN. INTERSECT הוא הניסוח הקרוב ביותר לאלגברה.']},
+  {id:'J3', topic:'J', level:2, q:'מזהי המוצרים שמעולם לא הוזמנו, הפעם עם EXCEPT.',
+   sql:"SELECT product_id FROM products EXCEPT SELECT product_id FROM orders",
+   hints:['EXCEPT מחזיר את מה שיש בשאילתה הראשונה ואין בשנייה.','זה אופרטור ההפרש מהאלגברה. בחלק מהמנועים הוא נקרא MINUS.'],
+   note:'EXCEPT הוא Difference מההרצאה. שים לב לסדר: הוא לא סימטרי, בניגוד ל-UNION ול-INTERSECT.'},
+  {id:'J4', topic:'J', level:2, q:'לכל ספק, כולל ספק בלי הזמנות: שם הספק ומספר ההזמנות. הפעם התחל את ה-FROM מטבלת ההזמנות והשתמש ב-RIGHT JOIN.',
+   sql:"SELECT s.supplier_name, COUNT(o.order_id) AS cnt FROM orders o RIGHT JOIN suppliers s ON o.supplier_id = s.supplier_id GROUP BY s.supplier_id, s.supplier_name",
+   hints:['RIGHT JOIN שומר את כל שורות הטבלה הימנית, כלומר זו שאחרי JOIN.','זו אותה תוצאה כמו LEFT JOIN עם הטבלאות בסדר הפוך. ספור עמודה מההזמנות ולא COUNT(*).'],
+   note:'ההרצאה מלמדת LEFT, RIGHT ו-FULL OUTER JOIN. בפועל כותבים כמעט תמיד LEFT, אבל במבחן צריך לדעת לקרוא את שלושתם.'},
+  {id:'J5', topic:'J', level:3, q:'השווה בין מזהי המוצרים שהוזמנו כ"חדש" למזהי המוצרים שהוזמנו כ"מחודש": הצג שתי עמודות, new_id ו-refurb_id, כך שמוצר שמופיע רק בצד אחד יקבל NULL בצד השני. השתמש ב-FULL OUTER JOIN בין שתי תת-שאילתות.',
+   sql:"SELECT n.product_id AS new_id, r.product_id AS refurb_id FROM (SELECT DISTINCT product_id FROM orders WHERE condition = 'חדש') n FULL OUTER JOIN (SELECT DISTINCT product_id FROM orders WHERE condition = 'מחודש') r ON n.product_id = r.product_id",
+   hints:['שתי טבלאות נגזרות, כל אחת עם DISTINCT, ו-FULL OUTER JOIN ביניהן.','FULL OUTER JOIN שומר את השורות שאין להן התאמה משני הצדדים, ולא רק מצד אחד.']},
+  {id:'J6', topic:'J', level:1, q:'מספר ההזמנה ושם הספק לכל הזמנה, אבל הפעם עם USING במקום ON.',
+   sql:"SELECT order_id, supplier_name FROM orders JOIN suppliers USING (supplier_id)",
+   hints:['USING (supplier_id) עובד כש שם העמודה זהה בשתי הטבלאות.','אחרי USING העמודה המשותפת מופיעה פעם אחת בלבד, ואסור לכתוב לה קידומת טבלה.'],
+   note:'ההרצאה מציגה את USING לצד ON. ההבדל המעשי: USING מאחד את עמודת הקישור לעמודה אחת בתוצאה.'},
+  {id:'J7', topic:'J', level:2, q:'מספר ההזמנה ושם הספק לכל הזמנה, עם NATURAL JOIN.',
+   sql:"SELECT order_id, supplier_name FROM orders NATURAL JOIN suppliers",
+   hints:['NATURAL JOIN מקשר לבד לפי כל העמודות ששמן זהה בשתי הטבלאות.','כאן העמודה המשותפת היחידה היא supplier_id, ולכן זה עובד.'],
+   note:'מלכודת: בין orders ל-returns יש שתי עמודות משותפות, order_id וגם status, ולכן NATURAL JOIN ביניהן היה מקשר גם לפי הסטטוס ומחזיר תוצאה שגויה.'},
+  {id:'J8', topic:'J', level:3, q:'מספרי ההזמנות וסכומן של הזמנות שסכומן גבוה מכל ההזמנות של ספק 2. המנוע כאן לא תומך ב-ALL, אז כתוב את הצורה השקולה עם תת-שאילתה סקלרית.',
+   sql:"SELECT order_id, amount FROM orders WHERE amount > (SELECT MAX(amount) FROM orders WHERE supplier_id = 2)",
+   hints:['"גדול מכל" פירושו גדול מהמקסימום.','בהרצאה זה נכתב amount > ALL (SELECT amount FROM orders WHERE supplier_id = 2).'],
+   note:'ALL ו-SOME קיימים ב-MySQL אבל לא ב-SQLite שרץ כאן. התרגום: > ALL הופך ל-> MAX, ו-> SOME הופך ל-> MIN. במבחן כתוב את הצורה של ההרצאה.'},
+  {id:'J9', topic:'J', level:3, q:'מספרי ההזמנות וסכומן של הזמנות שסכומן גבוה מלפחות אחת מההזמנות של ספק 3. שוב, הצורה השקולה במקום SOME.',
+   sql:"SELECT order_id, amount FROM orders WHERE amount > (SELECT MIN(amount) FROM orders WHERE supplier_id = 3)",
+   hints:['"גדול מלפחות אחד" פירושו גדול מהמינימום.','בהרצאה: amount > SOME (SELECT amount FROM orders WHERE supplier_id = 3). ANY הוא שם נרדף ל-SOME.']},
+
   // I — analyst interview level: subqueries, CTE, EXISTS, window functions
   {id:'I1', topic:'I', level:2, q:'ממוצע מספר ההזמנות לספק: ספור הזמנות לכל ספק בתת-שאילתה בתוך FROM, ואז חשב AVG על התוצאה. עמודה אחת.',
    sql:"SELECT AVG(cnt) AS avg_orders_per_supplier FROM (SELECT supplier_id, COUNT(*) AS cnt FROM orders GROUP BY supplier_id) AS t",
@@ -756,6 +843,86 @@ const EXERCISES = [
   {id:'I14', topic:'I', level:2, q:'לכל החזרה סגורה ("סופית"): מספר ההזמנה ומספר הימים שעברו מתאריך ההזמנה עד תאריך ההחזרה. ב-SQLite: julianday(b) - julianday(a). ב-MySQL זה DATEDIFF(b, a).',
    sql:"SELECT r.order_id, CAST(julianday(r.return_date) - julianday(o.order_date) AS INTEGER) AS days_out FROM returns r JOIN orders o ON r.order_id = o.order_id WHERE r.status = 'סופית'",
    hints:['JOIN בין returns ל-orders, ואז הפרש תאריכים.','julianday מחזיר מספר עשרוני. CAST ל-INTEGER או בלי, שניהם יתקבלו כאן.']}
+];
+
+// ---------- lab: a second, writable database for DDL and DML ----------
+// The practice tab is read-only on purpose. Everything the course teaches about
+// creating and changing data lives here instead, on a small database that resets.
+const LAB_SCHEMA = [
+  `CREATE TABLE Departments (
+     Dep_ID INTEGER PRIMARY KEY,
+     Dep_Name TEXT NOT NULL,
+     Building TEXT )`,
+  `INSERT INTO Departments VALUES (10,'Engineering','C'), (20,'Math','A'), (30,'Computers','B')`,
+  `CREATE TABLE Students (
+     StudentID INTEGER PRIMARY KEY,
+     FirstName TEXT NOT NULL,
+     LastName TEXT NOT NULL,
+     City TEXT,
+     Amount INT,
+     Dep_ID INT REFERENCES Departments (Dep_ID) )`,
+  `INSERT INTO Students VALUES
+     (1,'Avi','Cohen','Ramat-Gan',1200,30),
+     (2,'Dan','Israeli','Tel-Aviv',3600,20),
+     (3,'Ofer','Bar','Tel-Aviv',4000,10),
+     (4,'Chen','Levin','Givatayim',2000,30),
+     (5,'Debi','Dvir',NULL,700,20)`
+];
+const LAB = [
+  {id:'L1', topic:'L', level:1, q:'הוסף לטבלת Students את הסטודנט: מספר 6, Noa Galil, מהעיר Haifa, סכום 1500, מחלקה 20. שורה אחת, כל העמודות.',
+   sql:"INSERT INTO Students VALUES (6,'Noa','Galil','Haifa',1500,20)",
+   check:"SELECT * FROM Students WHERE StudentID = 6",
+   hints:['INSERT INTO TableName VALUES (...) כשנותנים ערך לכל עמודה לפי הסדר.','מחרוזות בגרשיים בודדים, מספרים בלי.']},
+  {id:'L2', topic:'L', level:1, q:'הוסף סטודנט מספר 7 בשם Gil Ravid, במחלקה 10, בלי עיר ובלי סכום. השתמש ברשימת עמודות.',
+   sql:"INSERT INTO Students (StudentID, FirstName, LastName, Dep_ID) VALUES (7,'Gil','Ravid',10)",
+   check:"SELECT StudentID, FirstName, City, Amount FROM Students WHERE StudentID = 7",
+   hints:['INSERT INTO Students (col1, col2, ...) VALUES (...) מאפשר לדלג על עמודות.','עמודה שלא ציינת מקבלת NULL, או את ערך ברירת המחדל אם הוגדר.'],
+   note:'זו הסיבה שרשימת עמודות עדיפה: אם מישהו יוסיף עמודה לטבלה, INSERT בלי רשימה יישבר.'},
+  {id:'L3', topic:'L', level:2, q:'צור טבלה בשם Stats עם שתי עמודות, Description מסוג TEXT ו-Value מסוג INT, והכנס אליה שורה אחת: התיאור "Average amount" והערך הוא ממוצע הסכומים של כל הסטודנטים, מחושב בתת-שאילתה.',
+   sql:"CREATE TABLE Stats (Description TEXT, Value INT); INSERT INTO Stats VALUES ('Average amount', (SELECT AVG(Amount) FROM Students))",
+   check:"SELECT Description, Value FROM Stats",
+   hints:['שתי פקודות, מופרדות בנקודה-פסיק. קודם CREATE TABLE ואז INSERT.','ערך בתוך VALUES יכול להיות תת-שאילתה בסוגריים, בדיוק כמו בהרצאה.']},
+  {id:'L4', topic:'L', level:1, q:'עדכן את העיר של הסטודנט מספר 3 ל-Netanya.',
+   sql:"UPDATE Students SET City = 'Netanya' WHERE StudentID = 3",
+   check:"SELECT StudentID, City FROM Students ORDER BY StudentID",
+   hints:['UPDATE TableName SET column = value WHERE condition.','בלי WHERE הפקודה תעדכן את כל השורות. זו הטעות היקרה ביותר ב-SQL.']},
+  {id:'L5', topic:'L', level:2, q:'העלה ב-10 אחוזים את הסכום של כל הסטודנטים שהסכום שלהם נמוך מהממוצע הכללי. חשב את הממוצע בתת-שאילתה.',
+   sql:"UPDATE Students SET Amount = Amount * 1.1 WHERE Amount < (SELECT AVG(Amount) FROM Students)",
+   check:"SELECT StudentID, Amount FROM Students ORDER BY StudentID",
+   hints:['SET Amount = Amount * 1.1, ו-WHERE עם תת-שאילתה על הממוצע.','הממוצע מחושב פעם אחת, לפני העדכון, ולא מתעדכן תוך כדי.']},
+  {id:'L6', topic:'L', level:1, q:'מחק מטבלת Students את כל מי שאין לו עיר.',
+   sql:"DELETE FROM Students WHERE City IS NULL",
+   check:"SELECT StudentID FROM Students ORDER BY StudentID",
+   hints:['DELETE FROM TableName WHERE condition.','ריק הוא NULL, אז התנאי הוא IS NULL ולא = NULL.'],
+   note:'ל-DELETE אין ביטול. בעבודה אמיתית מריצים קודם את אותו WHERE בתוך SELECT כדי לראות מה עומד להימחק.'},
+  {id:'L7', topic:'L', level:3, q:'צור טבלה בשם Workers עם: ID מסוג INT ומפתח ראשי, Name מסוג TEXT שאינו יכול להיות ריק, Weight מסוג FLOAT עם בדיקה שהערך בין 50 ל-150, Experience מסוג INT עם ברירת מחדל 0, ו-Dep_ID מסוג INT שמפנה אל Departments.',
+   sql:"CREATE TABLE Workers (ID INT PRIMARY KEY, Name TEXT NOT NULL, Weight FLOAT CHECK (Weight BETWEEN 50 AND 150), Experience INT DEFAULT 0, Dep_ID INT REFERENCES Departments (Dep_ID))",
+   check:"SELECT 'col' AS kind, name || ' ' || upper(type) || ' nn=' || \"notnull\" || ' pk=' || pk || ' def=' || ifnull(dflt_value,'-') AS detail FROM pragma_table_info('Workers') UNION ALL SELECT 'fk', \"table\" || '.' || \"to\" FROM pragma_foreign_key_list('Workers') UNION ALL SELECT 'check', CASE WHEN upper(sql) LIKE '%CHECK%' THEN 'yes' ELSE 'no' END FROM sqlite_master WHERE name = 'Workers'",
+   hints:['כל עמודה בשורה משלה: שם, טיפוס, ואז האילוצים שלה.','האילוצים: PRIMARY KEY, NOT NULL, CHECK (col BETWEEN a AND b), DEFAULT 0, ו-REFERENCES Departments (Dep_ID).'],
+   note:'חמשת האילוצים של ההרצאה בשאלה אחת. הבדיקה כאן קוראת את מבנה הטבלה שיצרת, לא את הטקסט שכתבת, אז כל ניסוח תקין יתקבל.'},
+  {id:'L8', topic:'L', level:2, q:'הוסף לטבלת Students עמודה בשם Bonus מסוג INT, עם בדיקה שהערך שונה מ-666.',
+   sql:"ALTER TABLE Students ADD COLUMN Bonus INT CHECK (Bonus <> 666)",
+   check:"SELECT name, upper(type) FROM pragma_table_info('Students') ORDER BY cid",
+   hints:['ALTER TABLE name ADD COLUMN col type constraint.','ALTER משנה את מבנה הטבלה, לכן הוא DDL ולא DML.']},
+  {id:'L9', topic:'L', level:2, q:'צור טבלה חדשה בשם RichStudents שמכילה את StudentID, FirstName ו-Amount של כל מי שהסכום שלו מעל 1500, ישירות מתוך שאילתה.',
+   sql:"CREATE TABLE RichStudents AS SELECT StudentID, FirstName, Amount FROM Students WHERE Amount > 1500",
+   check:"SELECT * FROM RichStudents ORDER BY StudentID",
+   hints:['CREATE TABLE name AS SELECT ... יוצר את הטבלה ומעתיק אליה את התוצאה.','הטיפוסים נגזרים מהשאילתה, ואין צורך להגדיר עמודות מראש.'],
+   note:'בניגוד לתצוגה, הטבלה הזו מחזיקה עותק של הנתונים. שינוי ב-Students לא ישפיע עליה.'},
+  {id:'L10', topic:'L', level:2, q:'צור תצוגה בשם CompStudents שמציגה FirstName ו-City של כל הסטודנטים במחלקה 30.',
+   sql:"CREATE VIEW CompStudents AS SELECT FirstName, City FROM Students WHERE Dep_ID = 30",
+   check:"SELECT * FROM CompStudents ORDER BY FirstName",
+   hints:['CREATE VIEW name AS SELECT ...','התצוגה לא מחזיקה נתונים. היא שם לשאילתה, ומריצים אותה מחדש בכל פנייה.'],
+   note:'ההבדל מהתרגיל הקודם: תצוגה תמיד מחזירה נתונים עדכניים, טבלה שנוצרה מ-SELECT קופאת ברגע היצירה.'},
+  {id:'L11', topic:'L', level:1, q:'צור אינדקס בשם StudentCityIndex על עמודת City בטבלת Students.',
+   sql:"CREATE INDEX StudentCityIndex ON Students (City)",
+   check:"SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+   hints:['CREATE INDEX index_name ON table_name (column).','אינדקס מזרז חיפוש ומאט הכנסה, עדכון ומחיקה. זה ה-tradeoff מההרצאה.']},
+  {id:'L12', topic:'L', level:2, q:'מחק לגמרי את שתי הטבלאות מהמסד, כך שלא תישאר אף טבלה. שים לב לסדר.',
+   sql:"DROP TABLE Students; DROP TABLE Departments",
+   check:"SELECT COUNT(*) AS tables_left FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+   hints:['DROP TABLE name, פעמיים, מופרד בנקודה-פסיק.','Students מפנה אל Departments במפתח זר. אי אפשר למחוק את טבלת האב כל עוד קיים בן שמצביע עליה.'],
+   note:'ההבדל מ-DELETE: DELETE מוחק שורות ומשאיר את הטבלה, DROP מוחק את הטבלה עצמה. DML מוחק נתונים, DDL מוחק מבנה.'}
 ];
 
 const THEORY = [
@@ -958,6 +1125,105 @@ SUM(x) OVER ()            -- סך הכל, בלי לקבץ (לחישוב אחוז
      {q:'למה WHERE ROW_NUMBER() OVER (...) = 1 נכשל?', a:'חלון מחושב אחרי WHERE, אז צריך תת-שאילתה או CTE ולסנן בחוץ', o:['כי ROW_NUMBER מחזיר טקסט','כי חסר PARTITION BY','כי WHERE לא מקבל שוויון לפונקציה'], why:'סדר הביצוע: WHERE לפני SELECT, והחלון שייך לשלב ה-SELECT.'},
      {q:'ההבדל בין SUM(amount) OVER (PARTITION BY supplier_id) ל-SUM(amount) ... GROUP BY supplier_id:', a:'החלון משאיר את כל השורות עם הסכום לצידן; GROUP BY מחזיר שורה אחת לספק', o:['אין הבדל בתוצאה','החלון מהיר יותר תמיד','GROUP BY לא מתעלם מ-NULL והחלון כן'], why:'ולכן חלון מתאים לחישוב "אחוז מהקבוצה" לכל שורה בלי JOIN חזרה לקבוצה.'}
    ]},
+  {topic:'R', title:'אלגברה רלציונית', pages:'עמ׳ 9–33', html:`
+<p>הבסיס התיאורטי של SQL. כל שאילתה שאתה כותב מתורגמת בסוף לשרשרת של האופרטורים האלה. תשעת האופרטורים של ההרצאה:</p>
+<table class="diff">
+<tr><th>#</th><th>אופרטור</th><th>מה הוא עושה</th><th>המקבילה ב-SQL</th></tr>
+<tr><td>1</td><td>Select · σ</td><td>בוחר <b>שורות</b> לפי תנאי</td><td><code>WHERE</code></td></tr>
+<tr><td>2</td><td>Project · Π</td><td>בוחר <b>עמודות</b>, ומסיר כפילויות</td><td><code>SELECT DISTINCT</code></td></tr>
+<tr><td>3</td><td>Union · ∪</td><td>איחוד שתי טבלאות תואמות</td><td><code>UNION</code></td></tr>
+<tr><td>4</td><td>Difference · −</td><td>מה שיש בראשונה ואין בשנייה</td><td><code>EXCEPT</code></td></tr>
+<tr><td>5</td><td>Cartesian · ×</td><td>כל שורה מול כל שורה</td><td><code>CROSS JOIN</code>, או פסיק</td></tr>
+<tr><td>6</td><td>Rename · ρ</td><td>שם חדש לטבלה, כדי להצליב אותה עם עצמה</td><td>כינוי טבלה (<code>AS b</code>)</td></tr>
+<tr><td>7</td><td>Intersection · ∩</td><td>מה שמופיע בשתיהן</td><td><code>INTERSECT</code></td></tr>
+<tr><td>8</td><td>Join · ⋈</td><td>מכפלה ואז סינון על תנאי הקישור</td><td><code>JOIN ... ON</code></td></tr>
+<tr><td>9</td><td>Division · ÷</td><td>"מי שמקושר ל<b>כל</b> הערכים ב-R2"</td><td>אין מילת מפתח</td></tr>
+</table>
+<p><b>שתי זהויות שכדאי לזכור:</b></p>
+<pre>R1 ∩ R2  =  R1 − (R1 − R2)
+R1 ⋈ R2  =  σ(R1 × R2)   עם התנאי כשדה הקישור</pre>
+<p><b>שלושת סוגי ה-Join:</b> Theta join עם תנאי כלשהו (=, &lt;, &gt;, ≠), Natural join שמקשר לבד לפי עמודות בעלות אותו שם ומשאיר אותן פעם אחת, ו-Outer join שמשאיר גם שורות בלי התאמה וממלא NULL.</p>
+<p><b>Division, האופרטור הקשה:</b> R1 ÷ R2 מחזיר את הערכים ב-R1 שמקושרים ל<b>כל</b> השורות של R2. השאלה הקלאסית: "מי מתאים לכל המשרות". ב-SQL אין לזה מילת מפתח, וכותבים אותו עם <code>NOT EXISTS</code> כפול, או בספירה: קבץ, וקח רק את מי שמספר ההתאמות שלו שווה לגודל R2.</p>`,
+   examples:[
+     {label:'Project הוא SELECT DISTINCT, לא SELECT', sql:"SELECT COUNT(*) AS rows_in_table, COUNT(DISTINCT district) AS project_result FROM orders"},
+     {label:'Division בספירה: ספקים שסיפקו את כל ארבע הקטגוריות', sql:"SELECT o.supplier_id, COUNT(DISTINCT p.category) AS categories FROM orders o JOIN products p ON o.product_id = p.product_id GROUP BY o.supplier_id HAVING COUNT(DISTINCT p.category) = (SELECT COUNT(DISTINCT category) FROM products)"}
+   ],
+   quiz:[
+     {q:'Π (Project) שונה מ-SELECT של SQL בכך ש:', a:'Project מסיר שורות כפולות, SELECT משאיר אותן', o:['Project בוחר שורות ולא עמודות','אין הבדל','Project עובד רק על טבלה אחת'], why:'לכן המקבילה המדויקת של Π היא SELECT DISTINCT.'},
+     {q:'R1 ⋈ R2 (Join) שקול ל:', a:'σ על התוצאה של R1 × R2', o:['Π על R1 ∪ R2','R1 − R2','ρ של R1'], why:'Join הוא מכפלה קרטזית ואז סינון לפי תנאי הקישור. לכן JOIN בלי ON מחזיר את כל הצירופים.'},
+     {q:'מתי צריך את Rename (ρ)?', a:'כשמצליבים טבלה עם עצמה ושני העותקים צריכים שמות שונים', o:['כדי לשנות שם עמודה בתוצאה','כדי למיין','כדי למחוק כפילויות'], why:'בלי שם שני אי אפשר להבדיל בין Applicant.a_id לבין העותק השני. ב-SQL זה הכינוי שנותנים לטבלה.'}
+   ]},
+  {topic:'K', title:'DDL: יצירת טבלאות, מפתחות ואילוצים', pages:'עמ׳ 97–115', html:`
+<pre>CREATE TABLE Workers (
+  ID         INT   PRIMARY KEY,
+  Name       TEXT  NOT NULL,
+  Weight     FLOAT CHECK (Weight BETWEEN 50 AND 150),
+  Experience INT   DEFAULT 0,
+  Dep_ID     INT   REFERENCES Departments (Dep_ID) ON DELETE CASCADE
+);</pre>
+<p><b>DDL מול DML.</b> DDL משנה <b>מבנה</b>: CREATE, ALTER, DROP. DML משנה <b>נתונים</b>: INSERT, UPDATE, DELETE. זו טבלת ההשוואה שמופיעה בהרצאה, והיא שאלת מבחן נפוצה.</p>
+<p><b>חמשת האילוצים:</b></p>
+<ul>
+<li><code>NOT NULL</code>: העמודה חייבת ערך.</li>
+<li><code>PRIMARY KEY</code>: מזהה ייחודי, לא יכול להיות NULL. יכול להיות מורכב מכמה עמודות יחד.</li>
+<li><code>FOREIGN KEY</code> / <code>REFERENCES</code>: הערך חייב להתקיים בטבלה אחרת. זו שלמות הקשר.</li>
+<li><code>CHECK</code>: תנאי על הערך עצמו. זו שלמות התחום.</li>
+<li><code>DEFAULT</code>: ערך שנכנס כשלא ציינו. שים לב ש-0 הוא לא NULL.</li>
+</ul>
+<p><code>ON DELETE CASCADE</code> אומר שמחיקת שורה באב מוחקת גם את הבנים שמצביעים עליה.</p>
+<p><b>ALTER</b> מוסיף או משנה עמודות בטבלה קיימת. <b>DROP TABLE</b> מוחק את הטבלה כולה, בניגוד ל-DELETE שמוחק רק שורות ומשאיר את המבנה.</p>
+<p>אפשר גם ליצור טבלה ישירות מתוצאה של שאילתה: <code>CREATE TABLE X AS SELECT ...</code>. הטבלה מקבלת עותק של הנתונים ברגע היצירה.</p>`,
+   examples:[
+     {label:'כך נראה מבנה טבלה מבפנים, כולל מפתח ראשי', sql:"SELECT name, type, \"notnull\" AS not_null, pk FROM pragma_table_info('orders')"},
+     {label:'שלמות הקשר: כל הזמנה מצביעה על ספק קיים', sql:"SELECT COUNT(*) AS orders_total, COUNT(s.supplier_id) AS with_valid_supplier FROM orders o LEFT JOIN suppliers s ON o.supplier_id = s.supplier_id"}
+   ],
+   quiz:[
+     {q:'איזו קבוצה היא DDL?', a:'CREATE, ALTER, DROP', o:['INSERT, UPDATE, DELETE','SELECT, FROM, WHERE','COMMIT, ROLLBACK'], why:'DDL מגדיר מבנה. INSERT, UPDATE ו-DELETE הם DML, כי הם נוגעים בנתונים.'},
+     {q:'מה ההבדל בין DELETE ל-DROP?', a:'DELETE מוחק שורות ומשאיר את הטבלה, DROP מוחק את הטבלה עצמה', o:['אין הבדל','DROP מוחק שורות ו-DELETE מוחק עמודות','DELETE עובד רק על טבלה ריקה'], why:'ולכן אחרי DELETE אפשר עדיין לעשות SELECT מהטבלה ולקבל אפס שורות.'},
+     {q:'עמודה עם DEFAULT 0 שלא ציינת בה ערך ב-INSERT תקבל:', a:'0', o:['NULL','שגיאה','את הערך של השורה הקודמת'], why:'זה בדיוק ההבדל בין DEFAULT ל-NULL. אפס הוא ערך, ריק הוא היעדר ערך.'}
+   ]},
+  {topic:'V', title:'תצוגות ואינדקסים', pages:'עמ׳ 107–121', html:`
+<pre>CREATE VIEW CompStudents AS
+  SELECT Name, City FROM Students WHERE Department = 'Computers';
+
+SELECT * FROM CompStudents WHERE City = 'Tel-Aviv';
+
+CREATE INDEX StudentIndex ON Students (LastName);
+DROP INDEX StudentIndex;</pre>
+<p><b>תצוגה (View) היא שם לשאילתה, לא עותק של נתונים.</b> כשפונים אליה, המנוע מריץ את השאילתה שמאחוריה. לכן היא תמיד מעודכנת, והיא לא תופסת מקום. שלוש סיבות להשתמש בה: להסתיר מורכבות של צירופים, לחסוך כתיבה חוזרת, ולהגביל גישה כך שמשתמש יראה רק חלק מהעמודות.</p>
+<p>ההבדל מ-<code>CREATE TABLE X AS SELECT</code>: שם מדובר בעותק שקופא ברגע היצירה.</p>
+<p><b>אינדקס</b> הוא מבנה עזר שמאפשר למנוע למצוא שורות בלי לסרוק את כל הטבלה, כמו מפתח עניינים בספר. אפשר להגדיר אותו על עמודה אחת או על כמה עמודות יחד.</p>
+<p><b>ה-tradeoff:</b> אינדקס מזרז קריאה ומאט כל כתיבה, כי בכל INSERT, UPDATE ו-DELETE צריך לעדכן גם אותו. לכן לא מוסיפים אינדקס לכל עמודה, אלא לעמודות שמחפשים לפיהן הרבה.</p>`,
+   examples:[
+     {label:'אילו אינדקסים קיימים במסד הזה', sql:"SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' UNION ALL SELECT '(אין אינדקסים מפורשים)', '' WHERE NOT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'index')"},
+     {label:'מה שתצוגה הייתה חוסכת: הצירוף הזה חוזר בכל דוח', sql:"SELECT o.order_id, s.supplier_name, p.product_name, o.amount FROM orders o JOIN suppliers s ON o.supplier_id = s.supplier_id JOIN products p ON o.product_id = p.product_id WHERE o.status = 'סופקה' LIMIT 5"}
+   ],
+   quiz:[
+     {q:'תצוגה (View) מחזיקה:', a:'את השאילתה בלבד, והיא רצה מחדש בכל פנייה', o:['עותק של הנתונים ברגע היצירה','עותק שמתעדכן פעם ביום','רק את שמות העמודות'], why:'ולכן תצוגה תמיד מעודכנת, ו-CREATE TABLE AS SELECT לא.'},
+     {q:'מה המחיר של הוספת אינדקס?', a:'כל INSERT, UPDATE ו-DELETE נעשים איטיים יותר', o:['אין מחיר','השאילתות נעשות איטיות יותר','הטבלה נעולה לקריאה'], why:'האינדקס חייב להתעדכן בכל שינוי בנתונים. זה ה-tradeoff שמופיע בהרצאה.'},
+     {q:'על איזו עמודה הכי כדאי אינדקס?', a:'עמודה שמופיעה הרבה ב-WHERE ובתנאי צירוף', o:['העמודה הראשונה בטבלה','עמודה עם ערך זהה בכל השורות','עמודה שמעדכנים כל הזמן'], why:'עמודה עם ערך אחיד לא מצמצמת כלום, ועמודה שמשתנה תדיר משלמת את מלוא מחיר העדכון.'}
+   ]},
+  {topic:'N', title:'נרמול', pages:'עמ׳ 124–128', html:`
+<p>נרמול הוא פירוק טבלאות כדי למנוע כפילות ואת התקלות שנובעות ממנה: עדכון שמתבצע במקום אחד ולא באחר, ומידע שנמחק בטעות יחד עם שורה.</p>
+<table class="diff">
+<tr><th>צורה</th><th>הדרישה</th></tr>
+<tr><td><b>1NF</b></td><td>כל תא מכיל ערך אחד בלבד. אין רשימות בתוך תא, ואין קבוצות חוזרות של עמודות.</td></tr>
+<tr><td><b>2NF</b></td><td>1NF, ובנוסף כל עמודה שאינה מפתח תלויה ב<b>כל</b> המפתח הראשי ולא רק בחלק ממנו. רלוונטי רק כשהמפתח מורכב מכמה עמודות.</td></tr>
+<tr><td><b>3NF</b></td><td>2NF, ובנוסף אין תלות של עמודה רגילה בעמודה רגילה אחרת. זו תלות מעבר.</td></tr>
+<tr><td><b>4NF</b></td><td>3NF, ובנוסף אין שתי תלויות רב-ערכיות בלתי תלויות באותה טבלה.</td></tr>
+<tr><td><b>5NF</b></td><td>4NF, ובנוסף אי אפשר לפרק עוד בלי לאבד מידע.</td></tr>
+</table>
+<p><b>הדוגמה הקלאסית לתלות מעבר (3NF):</b> טבלת סטודנטים עם מחלקה ובניין. הבניין תלוי במחלקה, והמחלקה תלויה בסטודנט. לכן הבניין תלוי בסטודנט רק דרך המחלקה. הפתרון: טבלת מחלקות נפרדת.</p>
+<p><b>המחיר:</b> ככל שמנרמלים יותר, צריך יותר צירופים בשאילתות. במערכות דיווח מוותרים לפעמים על נרמול בכוונה, כדי לחסוך צירופים. בתכנון מסד תפעולי, 3NF היא ברירת המחדל הסבירה.</p>`,
+   examples:[
+     {label:'כפילות בפועל: שם הספק היה חוזר בכל הזמנה אילו לא היה מנורמל', sql:"SELECT COUNT(*) AS order_rows, COUNT(DISTINCT supplier_id) AS supplier_rows_needed FROM orders"},
+     {label:'תלות מעבר: האזור תלוי בספק, לא בהזמנה', sql:"SELECT s.supplier_name, s.region, COUNT(*) AS orders FROM orders o JOIN suppliers s ON o.supplier_id = s.supplier_id GROUP BY s.supplier_id, s.supplier_name, s.region"}
+   ],
+   quiz:[
+     {q:'טבלה שבה בתא אחד כתוב "אנגלית, צרפתית" מפרה:', a:'1NF', o:['2NF','3NF','שום צורה, זה תקין'], why:'1NF דורשת ערך יחיד בכל תא. הפתרון הוא שורה נפרדת לכל שפה.'},
+     {q:'תלות חלקית, שבה עמודה תלויה רק בחלק מהמפתח המורכב, מפרה:', a:'2NF', o:['1NF','3NF','4NF'], why:'2NF עוסקת בדיוק בזה, ולכן היא רלוונטית רק כשהמפתח מורכב מיותר מעמודה אחת.'},
+     {q:'סטודנט, מחלקה, ובניין המחלקה, באותה טבלה. מה הבעיה?', a:'תלות מעבר, שמפרה 3NF', o:['תלות חלקית, 2NF','אין בעיה','הפרה של 1NF'], why:'הבניין תלוי במחלקה, שהיא עמודה רגילה. אם מחלקה עוברת בניין, צריך לעדכן את זה בכל שורות הסטודנטים שלה.'}
+   ]},
   {topic:'X', title:'מה שההרצאה לא מכסה (ונדרש)', pages:'השלמה', html:`
 <p><b>1. סדר הביצוע הלוגי</b> (לא סדר הכתיבה):</p>
 <pre>FROM → JOIN/ON → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → LIMIT</pre>
@@ -1127,6 +1393,30 @@ function translateError(msg){
   if (/incomplete input/i.test(m)) return 'השאילתה לא הושלמה: סוגריים או גרשיים לא נסגרו.';
   return m;
 }
+// ---------- lab engine ----------
+// Every run starts from a fresh copy of the lab schema, so an exercise can be
+// retried without "table already exists" and nothing leaks between attempts.
+function buildLabDb(SQL){
+  const db = new SQL.Database();
+  db.run('PRAGMA foreign_keys = ON');
+  for (const stmt of LAB_SCHEMA) db.run(stmt);
+  return db;
+}
+function labRun(SQL, statements, checkSql){
+  const db = buildLabDb(SQL);
+  try {
+    db.exec(statements);
+    return runQuery(db, checkSql);
+  } finally { db.close(); }
+}
+function labTables(SQL, statements){
+  const db = buildLabDb(SQL);
+  try {
+    db.exec(statements);
+    return runQuery(db, "SELECT type, name FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name");
+  } catch(e){ return {columns:[], values:[]}; } finally { db.close(); }
+}
+
 // ---------- state merge ----------
 // Merging two copies of the state (this device and the cloud, or an imported backup).
 // Never destructive: progress only moves forward, journals are unioned. Order of arguments
@@ -1195,7 +1485,7 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
 (function(){
   const $ = s => document.querySelector(s);
   const STORE_KEY = 'sqltrainer.v1';
-  let db = null;
+  let db = null, SQLlib = null;
   let state = load();
   let current = state.lastExercise || EXERCISES[0].id;
   let filter = 'all';
@@ -1221,7 +1511,9 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
     openExercise(ex(state.lastExercise) ? state.lastExercise : current);
   }
   function ex(id){ return EXERCISES.find(e=>e.id===id); }
-  function topic(k){ return TOPICS.find(t=>t.key===k) || (k==='X' ? {key:'X',name:'השלמה',full:'השלמות'} : k==='W' ? {key:'W',name:'חלונות',full:'פונקציות חלון'} : null); }
+  const EXTRA_TOPICS = {X:'השלמה', W:'חלונות', R:'אלגברה', K:'DDL', V:'תצוגות', N:'נרמול', L:'מעבדה'};
+  function topic(k){ return TOPICS.find(t=>t.key===k) || (EXTRA_TOPICS[k] ? {key:k, name:EXTRA_TOPICS[k], full:EXTRA_TOPICS[k], pages:''} : null); }
+  function allExercises(){ return EXERCISES.concat(LAB); }
   function banner(msg){ const b=$('#banner'); b.textContent=msg; b.classList.add('show'); clearTimeout(banner.t); banner.t=setTimeout(()=>b.classList.remove('show'),2600); }
   function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   function fmtTs(ts){ const d=new Date(ts); return d.toLocaleDateString('he-IL',{day:'2-digit',month:'2-digit'})+' '+d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
@@ -1331,6 +1623,117 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
     el.innerHTML=`<div class="eyebrow">השאילתה שלך לפי סדר הביצוע</div><ol>${steps.map(([kw,text,ex])=>`<li><b>${esc(kw)}</b> <span class="cl">${esc(text.length>90?text.slice(0,90)+'…':text)}</span><br><span class="ex">${esc(ex)}</span></li>`).join('')}</ol>`;
   };
 
+  // ---------- lab tab ----------
+  let labCur = null;
+  const labHints = {};
+  function labEx(id){ return LAB.find(e=>e.id===id); }
+  function renderLabSchema(){
+    const el=$('#labSchema'); if (!el) return;
+    el.innerHTML = LAB_SCHEMA.filter(s=>/^CREATE TABLE/i.test(s.trim())).map(s=>{
+      const name=/CREATE TABLE (\w+)/i.exec(s)[1];
+      const cols=s.slice(s.indexOf('(')+1, s.lastIndexOf(')')).split(',').map(c=>c.trim().split(/\s+/).slice(0,2).join(' ')).filter(Boolean);
+      return `<div class="t"><b>${esc(name)}</b>${cols.map(esc).join('<br>')}</div>`;
+    }).join('');
+  }
+  function renderLabChips(){
+    const el=$('#labChips'); if (!el) return;
+    el.innerHTML='';
+    for (const e of LAB){
+      const p=prog(e.id);
+      const b=document.createElement('button'); b.type='button';
+      b.setAttribute('aria-current', e.id===labCur);
+      b.innerHTML=`<span class="dot ${p.solved?'solved':(p.attempts?'tried':'')}"></span>${e.id}`;
+      b.title=e.q;
+      b.onclick=()=>openLab(e.id);
+      el.appendChild(b);
+    }
+  }
+  const LAB_TOK = ['INSERT INTO','VALUES','UPDATE','SET','DELETE FROM','WHERE','CREATE TABLE','ALTER TABLE','ADD COLUMN','DROP TABLE','CREATE VIEW','AS','CREATE INDEX','ON','SELECT','FROM','INT','TEXT','FLOAT','PRIMARY KEY','NOT NULL','CHECK (','DEFAULT','REFERENCES','BETWEEN','AND','Students','Departments','(',')',',',"''",';'];
+  function renderLabTok(){
+    const el=$('#labTok'); if (!el) return; el.innerHTML='';
+    const ta=$('#labEditor');
+    for (const t of LAB_TOK){
+      const b=document.createElement('button'); b.type='button'; b.textContent=t;
+      b.addEventListener('pointerdown', ev=>ev.preventDefault());
+      b.onclick=()=>insertToken(ta, t);
+      el.appendChild(b);
+    }
+  }
+  function openLab(id){
+    labCur=id; state.lastLab=id; save();
+    const e=labEx(id), p=prog(id);
+    $('#labHead').innerHTML=`<span class="badge">${e.id}</span><span class="badge">DDL / DML</span><span class="badge lvl${e.level}">${['','בסיסי','בינוני','מתקדם'][e.level]}</span>${p.solved?'<span class="badge" style="color:var(--ok)">נפתר</span>':''}`;
+    $('#labQ').textContent=e.q;
+    const n=$('#labNote'); n.hidden=!e.note; n.textContent=e.note||'';
+    setVal($('#labEditor'), (state.labDrafts && state.labDrafts[id]) || '');
+    $('#labHints').innerHTML=''; labHints[id]=labHints[id]||0;
+    for (let i=0;i<labHints[id];i++){ const d=document.createElement('div'); d.className='hint'; d.textContent=e.hints[i]; $('#labHints').appendChild(d); }
+    $('#labSolution').hidden=true; $('#labSolution').innerHTML='';
+    $('#labResultCard').hidden=true;
+    updateLabBtns(); renderLabChips();
+  }
+  function updateLabBtns(){
+    const e=labEx(labCur), p=prog(labCur), shown=labHints[labCur]||0;
+    const left=Math.max(0,3-p.attempts);
+    $('#labSolBtn').disabled = left>0 && !p.solution;
+    $('#labSolBtn').textContent = left>0 && !p.solution ? `פתרון (עוד ${left})` : 'פתרון';
+    $('#labHintBtn').disabled = shown>=e.hints.length;
+    $('#labHintBtn').textContent = shown>=e.hints.length ? 'אין עוד רמזים' : `רמז (${shown}/${e.hints.length})`;
+  }
+  function runLab(){
+    if (!SQLlib){ banner('המנוע עדיין נטען'); return; }
+    const e=labEx(labCur), p=prog(labCur), sql=$('#labEditor').value.trim();
+    const fb=$('#labFeedback'), card=$('#labResultCard');
+    card.hidden=false;
+    if (!sql){ fb.className='feedback warn'; fb.innerHTML='<span class="icon">!</span><div>אין מה להריץ.</div>'; $('#labMeta').innerHTML=''; $('#labTable').innerHTML=''; return; }
+    let actual;
+    try { actual = labRun(SQLlib, sql, e.check); }
+    catch(err){
+      p.attempts++; save(); updateLabBtns(); renderLabChips();
+      log({kind:'sql_error', ex:e.id, topic:'L', sql, msg:String(err.message||err)});
+      fb.className='feedback bad';
+      fb.innerHTML=`<span class="icon">×</span><div><b>הפקודה נכשלה.</b> ${esc(translateError(err.message||err))}<div class="mono tiny muted" style="direction:ltr;text-align:left;margin-top:4px">${esc(err.message||err)}</div></div>`;
+      $('#labMeta').innerHTML=''; $('#labTable').innerHTML=''; return;
+    }
+    const expected = labRun(SQLlib, e.sql, e.check);
+    const cmp = compare(expected, actual, false);
+    $('#labMeta').innerHTML=`<span>תוצאת שאילתת הביקורת: ${actual.values.length} שורות</span><span class="muted">צפוי: ${expected.values.length} שורות</span>`;
+    renderTable($('#labTable'), actual);
+    if (cmp.ok){
+      const first=!p.solved; p.solved=true; p.attempts++; save();
+      if (first) log({kind:'solved', ex:e.id, topic:'L', sql, attempts:p.attempts, hints:p.hints});
+      try { if (navigator.vibrate) navigator.vibrate(12); } catch(err){}
+      fb.className='feedback ok';
+      const left=LAB.filter(x=>!prog(x.id).solved).length;
+      fb.innerHTML=`<span class="icon">✓</span><div><b>נכון.</b> המסד אחרי הפקודות שלך תואם את הצפוי. ${left?`נשארו ${left} במעבדה.`:'סיימת את המעבדה.'}</div>`;
+      renderLabChips(); renderProgress(); updateLabBtns(); return;
+    }
+    p.attempts++; save(); updateLabBtns(); renderLabChips();
+    log({kind:'wrong', ex:e.id, topic:'L', sql, msg:cmp.problems[0]||''});
+    fb.className='feedback bad';
+    fb.innerHTML=`<span class="icon">×</span><div><b>הפקודות רצו, אבל המסד לא נראה כמו שציפינו.</b><ul>${cmp.problems.map(x=>`<li>${esc(x)}</li>`).join('')}</ul><div class="tiny muted">שאילתת הביקורת שהורצה: <span class="mono" style="direction:ltr;unicode-bidi:isolate">${esc(e.check.length>120?e.check.slice(0,120)+'…':e.check)}</span></div></div>`;
+  }
+  function wireLab(){
+    $('#labRunBtn').onclick=runLab;
+    $('#labEditor').addEventListener('keydown', ev=>{ if ((ev.ctrlKey||ev.metaKey) && ev.key==='Enter'){ ev.preventDefault(); runLab(); } });
+    $('#labEditor').addEventListener('input', ()=>{ state.labDrafts=state.labDrafts||{}; state.labDrafts[labCur]=$('#labEditor').value; clearTimeout(wireLab.t); wireLab.t=setTimeout(save,400); });
+    $('#labClearBtn').onclick=()=>{ setVal($('#labEditor'), ''); $('#labEditor').focus(); };
+    $('#labHintBtn').onclick=()=>{
+      const e=labEx(labCur), n=labHints[labCur]||0; if (n>=e.hints.length) return;
+      const d=document.createElement('div'); d.className='hint'; d.textContent=e.hints[n]; $('#labHints').appendChild(d);
+      labHints[labCur]=n+1; prog(labCur).hints++; save(); updateLabBtns();
+    };
+    $('#labSolBtn').onclick=()=>{
+      const e=labEx(labCur), p=prog(labCur);
+      if (p.attempts<3 && !p.solution) return;
+      if (!p.solution){ p.solution=true; log({kind:'solution', ex:e.id, topic:'L', sql:$('#labEditor').value}); save(); }
+      const s=$('#labSolution'); s.hidden=false;
+      s.innerHTML=`<div class="muted tiny">פתרון ייחוס. נרשם ביומן שנפתח.</div><pre>${esc(e.sql.replace(/; /g,';\n'))}</pre>`;
+    };
+    const step=d=>{ let i=LAB.findIndex(x=>x.id===labCur); i=(i+d+LAB.length)%LAB.length; openLab(LAB[i].id); };
+    $('#labPrev').onclick=()=>step(-1); $('#labNext').onclick=()=>step(1);
+  }
+
   // theme
   function applyTheme(){
     const t = state.theme || 'system';
@@ -1340,39 +1743,65 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
 
   // header stats
   function renderHead(){
-    const solved=EXERCISES.filter(e=>prog(e.id).solved).length;
+    const solved=allExercises().filter(e=>prog(e.id).solved).length;
     const qAll=THEORY.reduce((a,t)=>a+t.quiz.length,0), qOk=Object.values(state.quiz||{}).filter(q=>q.correct).length;
     const themeLabel={system:'ערכת נושא: מערכת',light:'ערכת נושא: בהיר',dark:'ערכת נושא: כהה'}[state.theme||'system'];
     const nx=nextItem();
-    $('#headstats').innerHTML=`<div class="hstat"><span class="n">${solved}/${EXERCISES.length}</span><span class="l">תרגילים</span></div><div class="hstat"><span class="n">${qOk}/${qAll}</span><span class="l">שאלות ידע</span></div><div class="hstat"><span class="n">${streak()}</span><span class="l">ימי רצף</span></div><button class="primary themeBtn" type="button" id="nextBtnHead" ${nx?'':'disabled'}>${nx?'המשך במסלול: '+esc(nx.short):'המסלול הושלם'}</button><button class="themeBtn ghost" type="button" id="themeBtn">${themeLabel}</button>`;
+    $('#headstats').innerHTML=`<div class="hstat"><span class="n">${solved}/${allExercises().length}</span><span class="l">תרגילים</span></div><div class="hstat"><span class="n">${qOk}/${qAll}</span><span class="l">שאלות ידע</span></div><div class="hstat"><span class="n">${streak()}</span><span class="l">ימי רצף</span></div><button class="primary themeBtn" type="button" id="nextBtnHead" ${nx?'':'disabled'}>${nx?'המשך במסלול: '+esc(nx.short):'המסלול הושלם'}</button><button class="themeBtn ghost" type="button" id="themeBtn">${themeLabel}</button>`;
     $('#themeBtn').onclick=cycleTheme;
     $('#nextBtnHead').onclick=()=>{ if (nx) goNext(nx); };
   }
 
   // learning path: stages in syllabus order, three checks each, nothing locked
-  const STAGE_CARDS={A:['A'],B:['B'],C:['C'],D:['D'],E:['E'],F:['F'],G:['G'],H:['X'],I:['I','W']};
-  const STAGE_NOTE={H:'לפני הדוחות המשולבים: כרטיס ההשלמה (סדר ביצוע, NULL, ONLY_FULL_GROUP_BY). זה מה שההרצאה לא מכסה ונדרש במבחן.', I:'מעבר לסילבוס. מה ששואלים בראיונות לאנליסט.'};
+  // the path follows the order of the lectures, then the interview material
+  const STAGES = [
+    {key:'R', title:'אלגברה רלציונית', pages:'עמ׳ 9–33', cards:['R'], list:()=>[],
+     note:'הבסיס התיאורטי, ובהרצאות הוא פותח את הקורס ותופס עשרים ושלושה עמודים. אין כאן תרגול במנוע, רק הבנה ושאלות ידע.'},
+    {key:'A', cards:['A'], list:()=>EXERCISES.filter(e=>e.topic==='A')},
+    {key:'B', cards:['B'], list:()=>EXERCISES.filter(e=>e.topic==='B')},
+    {key:'C', cards:['C'], list:()=>EXERCISES.filter(e=>e.topic==='C')},
+    {key:'D', cards:['D'], list:()=>EXERCISES.filter(e=>e.topic==='D')},
+    {key:'E', cards:['E'], list:()=>EXERCISES.filter(e=>e.topic==='E')},
+    {key:'F', cards:['F'], list:()=>EXERCISES.filter(e=>e.topic==='F')},
+    {key:'J', cards:[], list:()=>EXERCISES.filter(e=>e.topic==='J'),
+     note:'הנושאים שההרצאה מלמדת והגרסה הראשונה של המאמן דילגה עליהם.'},
+    {key:'G', cards:['G'], list:()=>EXERCISES.filter(e=>e.topic==='G')},
+    {key:'H', cards:['X'], list:()=>EXERCISES.filter(e=>e.topic==='H'),
+     note:'לפני הדוחות המשולבים: כרטיס ההשלמה (סדר ביצוע, NULL, ONLY_FULL_GROUP_BY). זה מה שההרצאה לא מכסה ונדרש במבחן.'},
+    {key:'L', title:'DDL ו-DML: מעבדה', pages:'עמ׳ 73–121', cards:['K','V'], list:()=>LAB, lab:true,
+     note:'יצירה, שינוי ומחיקה: כעשרים וחמישה עמודים בהרצאות. מתורגל בלשונית המעבדה, על מסד נפרד שמתאפס.'},
+    {key:'N', title:'נרמול', pages:'עמ׳ 124–128', cards:['N'], list:()=>[],
+     note:'תיאוריה בלבד. שאלה על צורות נורמליות היא שאלת מבחן קלאסית.'},
+    {key:'I', cards:['I','W'], list:()=>EXERCISES.filter(e=>e.topic==='I'),
+     note:'מעבר לסילבוס. מה ששואלים בראיונות לאנליסט.'}
+  ];
+  function stageOf(key){ return STAGES.find(s=>s.key===key); }
+  function stageTitle(s){ return s.title || (topic(s.key) ? topic(s.key).full : s.key); }
+  function stagePages(s){ return s.pages || (topic(s.key) ? topic(s.key).pages : ''); }
+  function stageShort(s){ return s.title ? s.title.split(':')[0] : (topic(s.key) ? topic(s.key).name : s.key); }
   function cardOf(k){ return THEORY.find(c=>c.topic===k); }
-  function stageStatus(key){
-    const cards=STAGE_CARDS[key]||[]; const read=state.read||{};
+  function stageStatus(s){
+    const cards=s.cards||[]; const read=state.read||{};
     const readOk=cards.every(k=>read[k]);
-    let qOk=0, qAll=0; for (const k of cards){ const c=cardOf(k); qAll+=c.quiz.length; qOk+=c.quiz.filter((q,i)=>(state.quiz[k+i]||{}).correct).length; }
-    const exs=EXERCISES.filter(e=>e.topic===key); const exDone=exs.filter(e=>prog(e.id).solved).length;
+    let qOk=0, qAll=0;
+    for (const k of cards){ const c=cardOf(k); if (!c) continue; qAll+=c.quiz.length; qOk+=c.quiz.filter((q,i)=>(state.quiz[k+i]||{}).correct).length; }
+    const exs=s.list(); const exDone=exs.filter(e=>prog(e.id).solved).length;
     const done = readOk && qOk===qAll && exDone===exs.length;
     const started = cards.some(k=>read[k]) || qOk>0 || exDone>0;
     return {cards, readOk, qOk, qAll, exDone, exTotal:exs.length, done, started};
   }
-  function stageNext(key){
-    const st=stageStatus(key); const read=state.read||{};
-    for (const k of st.cards) if (!read[k]) return {type:'card', card:k, stage:key, short:'כרטיס '+topic(key).name, label:'לקרוא את הכרטיס "'+cardOf(k).title+'"'};
-    for (const k of st.cards){ const c=cardOf(k); if (c.quiz.some((q,i)=>!(state.quiz[k+i]||{}).correct)) return {type:'quiz', card:k, stage:key, short:'שאלות ידע '+topic(key).name, label:'לענות נכון על שלוש שאלות הידע ב-"'+c.title+'"'}; }
-    const e=EXERCISES.find(x=>x.topic===key && !prog(x.id).solved);
-    if (e) return {type:'exercise', id:e.id, stage:key, short:'תרגיל '+e.id, label:'תרגיל '+e.id+': '+e.q};
+  function stageNext(s){
+    const st=stageStatus(s); const read=state.read||{};
+    for (const k of st.cards) if (!read[k]) return {type:'card', card:k, stage:s.key, short:'כרטיס '+stageShort(s), label:'לקרוא את הכרטיס "'+cardOf(k).title+'"'};
+    for (const k of st.cards){ const c=cardOf(k); if (c && c.quiz.some((q,i)=>!(state.quiz[k+i]||{}).correct)) return {type:'quiz', card:k, stage:s.key, short:'שאלות ידע '+stageShort(s), label:'לענות נכון על שלוש שאלות הידע ב-"'+c.title+'"'}; }
+    const e=s.list().find(x=>!prog(x.id).solved);
+    if (e) return {type: s.lab?'lab':'exercise', id:e.id, stage:s.key, short:(s.lab?'מעבדה ':'תרגיל ')+e.id, label:(s.lab?'מעבדה ':'תרגיל ')+e.id+': '+e.q};
     return null;
   }
-  function nextItem(){ for (const t of TOPICS){ const n=stageNext(t.key); if (n) return n; } return null; }
+  function nextItem(){ for (const s of STAGES){ const n=stageNext(s); if (n) return n; } return null; }
   function goNext(n){
     if (!n) return;
+    if (n.type==='lab'){ showTab('lab'); openLab(n.id); return; }
     if (n.type==='exercise'){ filter=n.stage; renderList(); showTab('practice'); openExercise(n.id); return; }
     showTab('theory');
     const det=document.querySelector(`details[data-topic="${n.card}"]`);
@@ -1380,31 +1809,32 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
   }
   function renderPath(){
     const top=$('#pathTop'), list=$('#pathStages'); if (!top) return;
-    const statuses=TOPICS.map(t=>({t, s:stageStatus(t.key)}));
-    const doneCount=statuses.filter(x=>x.s.done).length;
-    const units=statuses.reduce((a,x)=>a+x.s.exTotal+x.s.qAll+x.s.cards.length,0);
-    const doneUnits=statuses.reduce((a,x)=>a+x.s.exDone+x.s.qOk+x.s.cards.filter(k=>(state.read||{})[k]).length,0);
+    const rows=STAGES.map(st=>({st, s:stageStatus(st)}));
+    const doneCount=rows.filter(x=>x.s.done).length;
+    const units=rows.reduce((a,x)=>a+x.s.exTotal+x.s.qAll+x.s.cards.length,0);
+    const doneUnits=rows.reduce((a,x)=>a+x.s.exDone+x.s.qOk+x.s.cards.filter(k=>(state.read||{})[k]).length,0);
     const pct=Math.round(doneUnits/units*100);
     const nx=nextItem();
-    const syllabusDone=statuses.filter(x=>x.t.key!=='I').every(x=>x.s.done);
-    const interviewDone=statuses.every(x=>x.s.done);
+    const examStages=rows.filter(x=>x.st.key!=='I');
+    const examDone=examStages.every(x=>x.s.done);
+    const allDone=rows.every(x=>x.s.done);
     const cur = nx ? nx.stage : null;
-    top.innerHTML=`<div class="row"><div><div class="eyebrow">המסלול שלך</div><div class="big">${doneCount}/${TOPICS.length} שלבים הושלמו · ${pct}% מהפריטים</div></div></div>
+    top.innerHTML=`<div class="row"><div><div class="eyebrow">המסלול שלך</div><div class="big">${doneCount}/${STAGES.length} שלבים הושלמו · ${pct}% מהפריטים</div></div></div>
       <div class="pathbar"><i class="${pct===100?'done':''}" style="width:${pct}%"></i></div>
-      <div class="milestones"><span class="milestone ${syllabusDone?'on':''}">${syllabusDone?'✓ ':''}מוכן למבחן הקורס (שלבים 1–8)</span><span class="milestone ${interviewDone?'on':''}">${interviewDone?'✓ ':''}רמת ראיון אנליסט (שלב 9)</span></div>
-      ${nx?`<div class="nextbox"><div class="what"><span class="eyebrow">הבא בתור · שלב ${TOPICS.findIndex(t=>t.key===nx.stage)+1}, ${esc(topic(nx.stage).name)}</span><b>${esc(nx.label)}</b></div><button class="primary" type="button" id="pathGo">המשך מאיפה שעצרת</button></div>`:`<div class="nextbox"><div class="what"><b>סיימת את כל המסלול.</b> מכאן: מצב מבחן, שליפה יומית על חזרות, ותרגול חופשי.</div></div>`}
-      <p class="muted tiny" style="margin-top:10px">סדר השלבים הוא סדר ההרצאות. כל שלב נסגר כשקראת את הכרטיס, ענית נכון על כל שאלות הידע ופתרת את כל התרגילים. שום דבר לא נעול: אפשר לקפוץ לכל מקום, המסלול רק מראה מה הבא.</p>`;
+      <div class="milestones"><span class="milestone ${examDone?'on':''}">${examDone?'✓ ':''}מוכן למבחן הקורס (${examStages.length} השלבים הראשונים)</span><span class="milestone ${allDone?'on':''}">${allDone?'✓ ':''}רמת ראיון אנליסט</span></div>
+      ${nx?`<div class="nextbox"><div class="what"><span class="eyebrow">הבא בתור · שלב ${STAGES.findIndex(s=>s.key===nx.stage)+1}, ${esc(stageShort(stageOf(nx.stage)))}</span><b>${esc(nx.label)}</b></div><button class="primary" type="button" id="pathGo">המשך מאיפה שעצרת</button></div>`:`<div class="nextbox"><div class="what"><b>סיימת את כל המסלול.</b> מכאן: מצב מבחן, שליפה יומית על חזרות, ותרגול חופשי.</div></div>`}
+      <p class="muted tiny" style="margin-top:10px">סדר השלבים הוא סדר ההרצאות, ומספרי העמודים מפנים לקובץ ההרצאות של הקורס. כל שלב נסגר כשקראת את הכרטיס, ענית נכון על כל שאלות הידע ופתרת את כל התרגילים. שום דבר לא נעול: אפשר לקפוץ לכל מקום, המסלול רק מראה מה הבא.</p>`;
     const go=$('#pathGo'); if (go) go.onclick=()=>goNext(nx);
     list.innerHTML='';
-    statuses.forEach(({t,s},i)=>{
-      const d=document.createElement('div'); d.className='stage'+(s.done?' done':'')+(t.key===cur?' current':'');
+    rows.forEach(({st,s},i)=>{
+      const d=document.createElement('div'); d.className='stage'+(s.done?' done':'')+(st.key===cur?' current':'');
       const read=state.read||{};
       const checks=[];
       if (s.cards.length) checks.push(`<li class="${s.readOk?'ok':''}"><span class="box">${s.readOk?'✓':''}</span><span>${s.cards.length>1?'קראת את הכרטיסים':'קראת את הכרטיס'}</span><span class="cnt">${s.cards.filter(k=>read[k]).length}/${s.cards.length}</span></li>`);
       if (s.qAll) checks.push(`<li class="${s.qOk===s.qAll?'ok':''}"><span class="box">${s.qOk===s.qAll?'✓':''}</span><span>שאלות ידע</span><span class="cnt">${s.qOk}/${s.qAll}</span></li>`);
-      checks.push(`<li class="${s.exDone===s.exTotal?'ok':''}"><span class="box">${s.exDone===s.exTotal?'✓':''}</span><span>תרגילים</span><span class="cnt">${s.exDone}/${s.exTotal}</span></li>`);
-      const n=stageNext(t.key);
-      d.innerHTML=`<div class="num">${s.done?'✓':i+1}</div><div><h3><span>${esc(t.full)}</span><span class="pg">${esc(t.pages)}</span></h3>${STAGE_NOTE[t.key]?`<p class="muted tiny" style="margin-top:4px">${esc(STAGE_NOTE[t.key])}</p>`:''}<ul class="checks">${checks.join('')}</ul></div><div class="act">${n?`<button class="small ${t.key===cur?'primary':''}" type="button">${s.started?'המשך':'התחל'}</button>`:`<span class="badge" style="color:var(--ok)">הושלם</span>`}</div>`;
+      if (s.exTotal) checks.push(`<li class="${s.exDone===s.exTotal?'ok':''}"><span class="box">${s.exDone===s.exTotal?'✓':''}</span><span>${st.lab?'תרגילי מעבדה':'תרגילים'}</span><span class="cnt">${s.exDone}/${s.exTotal}</span></li>`);
+      const n=stageNext(st);
+      d.innerHTML=`<div class="num">${s.done?'✓':i+1}</div><div><h3><span>${esc(stageTitle(st))}</span><span class="pg">${esc(stagePages(st))}</span></h3>${st.note?`<p class="muted tiny" style="margin-top:4px">${esc(st.note)}</p>`:''}<ul class="checks">${checks.join('')}</ul></div><div class="act">${n?`<button class="small ${st.key===cur?'primary':''}" type="button">${s.started?'המשך':'התחל'}</button>`:`<span class="badge" style="color:var(--ok)">הושלם</span>`}</div>`;
       const b=d.querySelector('.act button'); if (b) b.onclick=()=>goNext(n);
       list.appendChild(d);
     });
@@ -1417,6 +1847,7 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
     if (name==='journal') renderJournal();
     if (name==='session') renderSessions();
     if (name==='practice') renderProgress();
+    if (name==='lab') { renderLabChips(); renderLabSchema(); }
     if (name==='path') renderPath();
     $('#rail').classList.remove('open');
     try { history.replaceState(null,'','#'+name); } catch(e){}
@@ -1684,10 +2115,10 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
   function renderJournal(){
     renderSync();
     const j=state.journal;
-    const solved=EXERCISES.filter(e=>prog(e.id).solved).length;
+    const solved=allExercises().filter(e=>prog(e.id).solved).length;
     const wrong=j.filter(x=>x.kind==='wrong').length, errs=j.filter(x=>x.kind==='sql_error').length, sols=j.filter(x=>x.kind==='solution').length, qz=j.filter(x=>x.kind==='quiz').length;
     const firstTry=j.filter(x=>x.kind==='solved'&&!x.quiz&&x.attempts===1&&!x.hints).length;
-    const tiles=[[solved+'/'+EXERCISES.length,'תרגילים שנפתרו'],[firstTry,'בניסיון ראשון בלי רמז'],[wrong,'תוצאות לא תואמות'],[errs,'שגיאות SQL'],[qz,'שאלות ידע שגויות'],[sols,'פתרונות שנפתחו'],[streak(),'ימי רצף']];
+    const tiles=[[solved+'/'+allExercises().length,'תרגילים שנפתרו'],[firstTry,'בניסיון ראשון בלי רמז'],[wrong,'תוצאות לא תואמות'],[errs,'שגיאות SQL'],[qz,'שאלות ידע שגויות'],[sols,'פתרונות שנפתחו'],[streak(),'ימי רצף']];
     for (const lvl of [1,2,3]){ const t=EXERCISES.filter(e=>e.level===lvl && prog(e.id).seconds); if (t.length>=2) tiles.push([fmtSecs(t.reduce((a,e)=>a+prog(e.id).seconds,0)/t.length), `זמן ממוצע לפתרון, ${['','בסיסי','בינוני','מתקדם'][lvl]} (${t.length})`]); }
     $('#stats').innerHTML=tiles.map(([n,l])=>`<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
     const ts=$('#topicstats'); ts.innerHTML='';
@@ -1704,7 +2135,7 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
       const isQuiz=String(x.ex).startsWith('Q');
       const isExam=x.kind==='exam';
       d.innerHTML=`<span class="kind ${x.kind}">${labels[x.kind]||x.kind}</span><div><div><b>${esc(x.ex)}</b> <span class="muted">${esc(topic(x.topic)?topic(x.topic).name:'')}</span>${x.msg?` <span class="muted">· ${esc(x.msg)}</span>`:''}</div>${x.sql?`<pre>${esc(x.sql)}</pre>`:''}</div><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end"><span class="ts">${fmtTs(x.ts)}</span><button class="small ghost" type="button">${isQuiz?'לכרטיס':isExam?'למבחנים':'לתרגיל'}</button></div>`;
-      d.querySelector('button').onclick=()=>{ if (isExam){ showTab('session'); } else if (isQuiz){ showTab('theory'); const det=document.querySelector(`details[data-topic="${x.topic}"]`); if (det){ det.open=true; det.scrollIntoView({block:'start'}); } } else { showTab('practice'); openExercise(x.ex); } };
+      d.querySelector('button').onclick=()=>{ if (isExam){ showTab('session'); } else if (isQuiz){ showTab('theory'); const det=document.querySelector(`details[data-topic="${x.topic}"]`); if (det){ det.open=true; det.scrollIntoView({block:'start'}); } } else if (labEx(x.ex)){ showTab('lab'); openLab(x.ex); } else { showTab('practice'); openExercise(x.ex); } };
       el.appendChild(d);
     }
   }
@@ -1922,19 +2353,21 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
 
   // boot
   applyTheme();
-  attachHighlight($('#editor')); attachHighlight($('#sbEditor')); renderTokbars();
+  attachHighlight($('#editor')); attachHighlight($('#sbEditor')); attachHighlight($('#labEditor'));
+  renderTokbars(); renderLabSchema(); renderLabTok(); wireLab();
   renderSchema(); renderFilters(); renderList(); renderProgress(); renderSessions();
   openExercise(current);
+  openLab(labEx(state.lastLab) ? state.lastLab : LAB[0].id);
   const startTab = (location.hash||'').replace('#','');
-  showTab(['path','practice','session','journal','theory','sandbox'].includes(startTab) ? startTab : 'path');
-  $('#run').disabled=true; $('#sbRun').disabled=true;
-  function engineReady(){ $('#run').disabled=false; $('#sbRun').disabled=false; }
+  showTab(['path','practice','lab','session','journal','theory','sandbox'].includes(startTab) ? startTab : 'path');
+  $('#run').disabled=true; $('#sbRun').disabled=true; $('#labRunBtn').disabled=true;
+  function engineReady(){ $('#run').disabled=false; $('#sbRun').disabled=false; $('#labRunBtn').disabled=false; }
   function engineFail(err){
     $('#resultCard').hidden=false; $('#feedback').className='feedback bad';
     $('#feedback').innerHTML=`<span class="icon">×</span><div><b>מנוע ה-SQL לא נטען.</b> רענן את הדף. (${esc(String(err))})</div>`;
   }
   if (typeof initSqlJs !== 'function'){ engineFail('sql-asm.js לא נטען'); }
-  else initSqlJs().then(SQL=>{ db=buildDb(SQL); engineReady(); }).catch(engineFail);
+  else initSqlJs().then(SQL=>{ SQLlib=SQL; db=buildDb(SQL); engineReady(); }).catch(engineFail);
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) { window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
 })();
 </script>

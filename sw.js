@@ -1,5 +1,5 @@
 // Offline cache for the SQL trainer. Bump CACHE when files change.
-const CACHE = 'sql-trainer-v6';
+const CACHE = 'sql-trainer-v7';
 const SHELL = ['./', './index.html', './sql-asm.js', './sync-config.js', './sync.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

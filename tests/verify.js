@@ -5,7 +5,7 @@ const root = path.resolve(__dirname, '..');
 const htmlPath = process.argv[2] ? path.resolve(process.argv[2]) : path.join(root, 'index.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
 const bank = html.split('//<BANK>')[1].split('//</BANK>')[0];
-const api = new Function(bank + '\nreturn {DATA,EXERCISES,TOPICS,THEORY,buildDb,runQuery,compare,staticWarnings,isSelectOnly,translateError,derivedAliasCheck,mergeState,looksLikeState};')();
+const api = new Function(bank + '\nreturn {DATA,EXERCISES,TOPICS,THEORY,buildDb,runQuery,compare,staticWarnings,isSelectOnly,translateError,derivedAliasCheck,mergeState,looksLikeState,LAB,LAB_SCHEMA,buildLabDb,labRun};')();
 const initSqlJs = require(path.join(root, 'sql-asm.js'));
 
 initSqlJs().then(SQL => {
@@ -29,7 +29,10 @@ initSqlJs().then(SQL => {
 
   // theory: examples run and return rows, quizzes well-formed
   let nex = 0, nq = 0;
+  const cardTopics = new Set();
   for (const t of api.THEORY) {
+    if (cardTopics.has(t.topic)) problem('duplicate theory card topic', t.topic);
+    cardTopics.add(t.topic);
     for (const x of t.examples) {
       nex++;
       try { const r = api.runQuery(db, x.sql); if (!r.values.length) problem('empty example', t.topic, x.label); }
@@ -59,6 +62,27 @@ initSqlJs().then(SQL => {
   expect('window in WHERE translated', /חלון/.test(api.translateError('misuse of window function ROW_NUMBER()')));
   expect('non-select blocked', !api.isSelectOnly("DROP TABLE orders") && !api.isSelectOnly("SELECT 1; DELETE FROM orders"));
   expect('error translated', /product_nme/.test(api.translateError('no such column: product_nme')));
+
+  // lab: every reference solution must run on a fresh lab db and satisfy its own check
+  const labIds = new Set();
+  for (const e of api.LAB) {
+    if (labIds.has(e.id) || ids.has(e.id)) problem('duplicate lab id', e.id); labIds.add(e.id);
+    if (!Array.isArray(e.hints) || !e.hints.length) problem('lab exercise has no hints', e.id);
+    if (!e.check) problem('lab exercise has no check query', e.id);
+    let r; try { r = api.labRun(SQL, e.sql, e.check); } catch (err) { problem('lab reference fails', e.id, err.message); continue; }
+    if (!r.values.length) problem('lab check returns nothing', e.id);
+    if (!api.compare(r, r, false).ok) problem('lab self-compare failed', e.id);
+    // the check must actually discriminate: an empty submission must not pass
+    let empty; try { empty = api.labRun(SQL, 'SELECT 1', e.check); } catch (err) { empty = null; }
+    if (empty && api.compare(r, empty, false).ok) problem('lab check passes with no work done', e.id);
+  }
+  console.log(`lab exercises: ${api.LAB.length}`);
+
+  // each lab run starts from a clean database
+  const fresh1 = api.labRun(SQL, "INSERT INTO Students VALUES (99,'A','B','C',1,10)", 'SELECT COUNT(*) FROM Students');
+  const fresh2 = api.labRun(SQL, 'SELECT 1', 'SELECT COUNT(*) FROM Students');
+  expect('lab db resets between runs', fresh1.values[0][0] === fresh2.values[0][0] + 1);
+  expect('lab enforces foreign keys', (() => { try { api.labRun(SQL, "INSERT INTO Students VALUES (98,'A','B','C',1,999)", 'SELECT 1'); return false; } catch (e) { return /FOREIGN KEY/i.test(e.message); } })());
 
   // state merge: two devices must converge without losing anything
   const m = api.mergeState;
