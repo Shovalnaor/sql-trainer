@@ -1647,13 +1647,18 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
   }
   function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} try { if (window.TrainerSync && window.TrainerSync.changed) window.TrainerSync.changed(); } catch(e){} }
   function prog(id){ return state.progress[id] || (state.progress[id] = {attempts:0, solved:false, hints:0, solution:false}); }
-  // replace the whole state and redraw everything that reads it
+  // replace the whole state and redraw everything that reads it.
+  // this rebuilds the theory DOM, so remember which cards were open and reopen them,
+  // otherwise a sync from the other device would close a card you are reading.
   function applyState(next){
+    const openTheory = [...document.querySelectorAll('details.theory[open]')].map(d=>d.dataset.topic);
+    const activeTab = document.querySelector('.panel:not([hidden])');
     state = next; hintsShown = {};
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){}
     applyTheme(); renderSchema(); renderFilters(); renderList(); renderProgress(); renderPath();
     if (!$('#panel-journal').hidden) renderJournal();
     if (!$('#panel-session').hidden) renderSessions();
+    openTheory.forEach(t=>{ const d=document.querySelector(`details.theory[data-topic="${t}"]`); if (d) d.open=true; });
     openExercise(ex(state.lastExercise) ? state.lastExercise : current);
   }
   function ex(id){ return EXERCISES.find(e=>e.id===id); }

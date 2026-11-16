@@ -71,13 +71,15 @@
       const val = snap.val();
       let remote = null;
       if (val && typeof val.state === 'string') { try { remote = JSON.parse(val.state); } catch(e){} }
-      const merged = hooks.merge(hooks.getState(), remote);
-      if (same(merged, remote) && same(merged, hooks.getState())) {
-        emit('on', 'מסונכרן · ' + (user.email || user.displayName || 'מחובר'));
-        return;                                   // nothing new on either side, stay quiet
+      const cur = hooks.getState();
+      const merged = hooks.merge(cur, remote);
+      // Only re-render the page when the cloud genuinely brought something the
+      // local copy lacked. Rebuilding on an echo of our own write would reset the
+      // UI (an open theory card, the editor) for no reason.
+      if (!same(merged, cur)) {
+        applying = true;
+        try { hooks.setState(merged); } finally { applying = false; }
       }
-      applying = true;
-      try { hooks.setState(merged); } finally { applying = false; }
       emit('on', 'מסונכרן · ' + (user.email || user.displayName || 'מחובר'));
       if (!same(merged, remote)) schedulePush(1200); // our local side had something the cloud lacked
     }, err => emit('error', String(err && err.message || err)));
