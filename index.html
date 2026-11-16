@@ -1648,18 +1648,27 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
   function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){} try { if (window.TrainerSync && window.TrainerSync.changed) window.TrainerSync.changed(); } catch(e){} }
   function prog(id){ return state.progress[id] || (state.progress[id] = {attempts:0, solved:false, hints:0, solution:false}); }
   // replace the whole state and redraw everything that reads it.
-  // this rebuilds the theory DOM, so remember which cards were open and reopen them,
-  // otherwise a sync from the other device would close a card you are reading.
+  // never rebuilds the theory DOM (that would wipe an open card's live example
+  // result and its open state); refreshTheory updates only the quiz answers in place.
   function applyState(next){
-    const openTheory = [...document.querySelectorAll('details.theory[open]')].map(d=>d.dataset.topic);
-    const activeTab = document.querySelector('.panel:not([hidden])');
     state = next; hintsShown = {};
     try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch(e){}
-    applyTheme(); renderSchema(); renderFilters(); renderList(); renderProgress(); renderPath();
+    applyTheme(); refreshTheory(); renderFilters(); renderList(); renderProgress(); renderPath();
     if (!$('#panel-journal').hidden) renderJournal();
     if (!$('#panel-session').hidden) renderSessions();
-    openTheory.forEach(t=>{ const d=document.querySelector(`details.theory[data-topic="${t}"]`); if (d) d.open=true; });
     openExercise(ex(state.lastExercise) ? state.lastExercise : current);
+  }
+  // update only the state-dependent parts of the theory tab (quiz answers and the
+  // qs badge), without tearing down the cards, the examples, or their open state.
+  function refreshTheory(){
+    if (!$('#theory').children.length){ renderSchema(); return; }  // first time: build it
+    for (const c of THEORY){
+      const el = document.getElementById('quiz-' + c.topic);
+      if (el) renderQuiz(c, el);
+      const det = document.querySelector(`details.theory[data-topic="${c.topic}"]`);
+      const sum = det && det.querySelector('.qs');
+      if (sum){ const ok=c.quiz.filter((q,i)=>(state.quiz[c.topic+i]||{}).correct).length; sum.textContent=ok+'/'+c.quiz.length; sum.classList.toggle('full', ok===c.quiz.length); }
+    }
   }
   function ex(id){ return EXERCISES.find(e=>e.id===id); }
   const EXTRA_TOPICS = {X:'השלמה', W:'חלונות', R:'אלגברה', K:'DDL', V:'תצוגות', N:'נרמול', L:'מעבדה'};

@@ -72,11 +72,12 @@
       let remote = null;
       if (val && typeof val.state === 'string') { try { remote = JSON.parse(val.state); } catch(e){} }
       const cur = hooks.getState();
+      const curNorm = hooks.merge(cur, null);        // normalize: the live state has unsorted keys
       const merged = hooks.merge(cur, remote);
-      // Only re-render the page when the cloud genuinely brought something the
-      // local copy lacked. Rebuilding on an echo of our own write would reset the
-      // UI (an open theory card, the editor) for no reason.
-      if (!same(merged, cur)) {
+      // Re-render only when the cloud genuinely brought something new. Comparing the
+      // normalized shapes is essential: the raw live state and the merge output order
+      // their keys differently, so a plain compare always looked "changed" and rebuilt.
+      if (!same(merged, curNorm)) {
         applying = true;
         try { hooks.setState(merged); } finally { applying = false; }
       }
@@ -103,11 +104,10 @@
       let remote = null;
       if (current && typeof current.state === 'string') { try { remote = JSON.parse(current.state); } catch(e){} }
       const cur = hooks.getState();
+      const curNorm = hooks.merge(cur, null);        // normalize before comparing (see onValue)
       const merged = hooks.merge(cur, remote);
       // Touch local state only when the cloud genuinely had something we lacked.
-      // Calling setState on our own push rebuilds the page and wipes, for example,
-      // an open theory card's example result — the reported "closes after 3 seconds".
-      if (!same(merged, cur)) {
+      if (!same(merged, curNorm)) {
         applying = true; try { hooks.setState(merged); } finally { applying = false; }
       }
       if (same(merged, remote)) return undefined;   // nothing to add, abort the write (no loop)
