@@ -102,8 +102,14 @@
     const res = await fb.rtdb.runTransaction(nodeRef(), current => {
       let remote = null;
       if (current && typeof current.state === 'string') { try { remote = JSON.parse(current.state); } catch(e){} }
-      const merged = hooks.merge(hooks.getState(), remote);
-      applying = true; try { hooks.setState(merged); } finally { applying = false; }
+      const cur = hooks.getState();
+      const merged = hooks.merge(cur, remote);
+      // Touch local state only when the cloud genuinely had something we lacked.
+      // Calling setState on our own push rebuilds the page and wipes, for example,
+      // an open theory card's example result — the reported "closes after 3 seconds".
+      if (!same(merged, cur)) {
+        applying = true; try { hooks.setState(merged); } finally { applying = false; }
+      }
       if (same(merged, remote)) return undefined;   // nothing to add, abort the write (no loop)
       return { state: JSON.stringify(merged), updatedAt: Date.now() };
     });
