@@ -126,6 +126,20 @@ textarea.sql{position:relative;display:block;resize:vertical;background:transpar
 textarea.sql::placeholder{color:var(--muted);opacity:.8}
 textarea.sql::selection{background:color-mix(in srgb, var(--accent) 30%, transparent)}
 .hl .k{color:var(--kw);font-weight:600}.hl .s{color:var(--str)}.hl .n{color:var(--num)}.hl .c{color:var(--muted);font-style:italic}.hl .f{color:var(--fn)}
+details.schemaref{padding:0}
+details.schemaref summary{cursor:pointer;padding:.7rem 1rem;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none}
+details.schemaref summary::-webkit-details-marker{display:none}
+details.schemaref summary::after{content:"+";color:var(--muted);font-weight:400;font-size:1.1rem;order:-1}
+details.schemaref[open] summary::after{content:"−"}
+.schemaref-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;padding:0 1rem}
+.sref{border:1px solid var(--line);border-radius:8px;padding:.4rem .5rem;background:var(--code-bg);min-width:0}
+.sref > .tname{font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--accent);background:none;border:0;padding:0 0 .25rem;cursor:pointer;direction:ltr}
+.sref .cols{display:flex;flex-direction:column;gap:1px}
+.sref .col{display:flex;justify-content:space-between;gap:6px;font-family:var(--font-mono);font-size:.76rem;background:none;border:0;padding:.12rem .15rem;border-radius:4px;cursor:pointer;direction:ltr;text-align:left;color:var(--fg)}
+.sref .col:hover,.sref .tname:hover{background:var(--accent-soft)}
+.sref .col .ty{color:var(--muted)}
+.sref .col.pk{font-weight:700}
+.schemaref-rel{padding:.5rem 1rem 1rem;font-family:var(--font-mono);font-size:.76rem;color:var(--muted);direction:ltr;text-align:left;line-height:1.7}
 .tokbar{display:flex;gap:6px;overflow-x:auto;padding:0 0 8px;scrollbar-width:none;direction:ltr;-webkit-overflow-scrolling:touch}
 .tokbar::-webkit-scrollbar{display:none}
 .tokbar button{padding:.3rem .55rem;font-family:var(--font-mono);font-size:.8rem;white-space:nowrap;border-radius:6px;min-height:34px;flex:0 0 auto}
@@ -379,6 +393,11 @@ details.theory pre{background:var(--code-bg);border:1px solid var(--line);border
         <p class="question" id="qtext"></p>
         <p class="note" id="qnote" hidden></p>
       </div>
+      <details class="card schemaref" id="schemaRef">
+        <summary><span>מבנה הטבלאות</span><span class="muted tiny">לחיצה על שם מכניסה אותו לעורך</span></summary>
+        <div class="schemaref-body" id="schemaRefBody"></div>
+        <div class="schemaref-rel" id="schemaRefRel"></div>
+      </details>
       <div class="card">
         <div class="tokbar" id="tokKw" aria-label="מילות מפתח"></div>
         <div class="tokbar" id="tokSchema" aria-label="טבלאות ועמודות"></div>
@@ -1894,6 +1913,23 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
     $('#labPrev').onclick=()=>step(-1); $('#labNext').onclick=()=>step(1);
   }
 
+  // schema reference inside the practice tab, so you never leave to look up a column
+  function renderSchemaRef(){
+    const body = document.getElementById('schemaRefBody'); if (!body) return;
+    const ta = $('#editor');
+    body.innerHTML = Object.entries(DATA).map(([name,t])=>{
+      const cols = t.cols.map(c=>{ const parts=c.split(' '); const n=parts[0]; const pk=/PRIMARY/.test(c); const ty=(pk?'INTEGER':parts[1]).toLowerCase();
+        return `<button type="button" class="col${pk?' pk':''}" data-ins="${n}"><span>${n}</span><span class="ty">${ty}${pk?' · PK':''}</span></button>`; }).join('');
+      return `<div class="sref"><button type="button" class="tname" data-ins="${name}">${name}</button><div class="cols">${cols}</div></div>`;
+    }).join('');
+    body.querySelectorAll('[data-ins]').forEach(b=>{ b.addEventListener('pointerdown', ev=>ev.preventDefault()); b.onclick=()=>insertToken(ta, b.dataset.ins); });
+    const rel = document.getElementById('schemaRefRel');
+    if (rel) rel.innerHTML = 'קשרים (JOIN):<br>orders.supplier_id → suppliers.supplier_id<br>orders.product_id → products.product_id<br>returns.order_id → orders.order_id';
+    const det = $('#schemaRef');
+    try { if (localStorage.getItem('sqltrainer.schemaRef') === '1') det.open = true; } catch(e){}
+    det.addEventListener('toggle', ()=>{ try { localStorage.setItem('sqltrainer.schemaRef', det.open ? '1' : '0'); } catch(e){} });
+  }
+
   // theme
   function applyTheme(){
     const t = state.theme || 'system';
@@ -2519,7 +2555,7 @@ function looksLikeState(o){ return !!o && typeof o === 'object' && typeof o.prog
   // boot
   applyTheme();
   attachHighlight($('#editor')); attachHighlight($('#sbEditor')); attachHighlight($('#labEditor'));
-  renderTokbars(); renderLabSchema(); renderLabTok(); wireLab();
+  renderTokbars(); renderSchemaRef(); renderLabSchema(); renderLabTok(); wireLab();
   renderSchema(); renderFilters(); renderList(); renderProgress(); renderSessions();
   openExercise(current);
   openLab(labEx(state.lastLab) ? state.lastLab : LAB[0].id);
